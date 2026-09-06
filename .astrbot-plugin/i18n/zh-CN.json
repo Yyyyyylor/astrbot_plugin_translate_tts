@@ -1,0 +1,44 @@
+{
+  "metadata": {
+    "display_name": "翻译 TTS",
+    "short_desc": "仅在原有 TTS 链路合成语音时翻译文本。",
+    "desc": "保留原语言回答，并通过原链路选择的 TTS 提供商合成可配置目标语言的译文。"
+  },
+  "config": {
+    "enabled": {
+      "description": "启用 TTS 翻译"
+    },
+    "translation_provider_id": {
+      "description": "翻译 LLM 提供商",
+      "hint": "仅用于翻译，不会替换聊天提供商；留空时使用当前会话的聊天提供商。"
+    },
+    "target_language": {
+      "description": "目标语言",
+      "labels": ["日语", "英语", "韩语", "简体中文", "繁体中文", "法语", "德语", "西班牙语", "自定义"]
+    },
+    "custom_target_language": {
+      "description": "自定义目标语言名称",
+      "hint": "仅当目标语言选择“自定义”时必填。"
+    },
+    "translation_timeout_seconds": {
+      "description": "翻译总超时（秒）",
+      "hint": "包含等待并发名额的时间，范围为 1–120 秒。"
+    },
+    "max_input_chars": {
+      "description": "原文最大字符数",
+      "hint": "超过限制时跳过翻译，直接使用完整原文进行 TTS。"
+    },
+    "max_output_chars": {
+      "description": "译文最大字符数",
+      "hint": "超过限制的模型输出会被拒绝并回退到原文 TTS。"
+    },
+    "max_concurrent_translations": {
+      "description": "最大并发翻译数",
+      "hint": "限制本插件实例同时进行的翻译请求数。"
+    },
+    "enable_proactive_compat": {
+      "description": "启用主动聊天兼容",
+      "hint": "为 astrbot_plugin_proactive_chat v1.2.5 的 TTS 路径启用翻译。"
+    }
+  }
+}

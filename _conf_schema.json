@@ -1,0 +1,51 @@
+{
+    "enabled": {
+        "type": "bool",
+        "description": "Enable translation for existing TTS calls",
+        "default": true,
+    },
+    "translation_provider_id": {
+        "type": "string",
+        "description": "Translation LLM provider (empty uses the current session provider)",
+        "hint": "This provider is used only for translation and does not replace the chat provider.",
+        "default": "",
+        "_special": "select_provider",
+    },
+    "target_language": {
+        "type": "string",
+        "description": "Target language",
+        "default": "ja",
+        "options": ["ja", "en", "ko", "zh-CN", "zh-TW", "fr", "de", "es", "custom"],
+    },
+    "custom_target_language": {
+        "type": "string",
+        "description": "Custom target language name",
+        "hint": "Required only when target_language is custom.",
+        "default": "",
+    },
+    "translation_timeout_seconds": {
+        "type": "int",
+        "description": "Total translation timeout in seconds (including concurrency wait)",
+        "default": 15,
+    },
+    "max_input_chars": {
+        "type": "int",
+        "description": "Maximum source text length; longer text uses original-language TTS",
+        "default": 4000,
+    },
+    "max_output_chars": {
+        "type": "int",
+        "description": "Maximum accepted translation length",
+        "default": 12000,
+    },
+    "max_concurrent_translations": {
+        "type": "int",
+        "description": "Maximum concurrent translation calls",
+        "default": 2,
+    },
+    "enable_proactive_compat": {
+        "type": "bool",
+        "description": "Enable compatibility with astrbot_plugin_proactive_chat",
+        "default": true,
+    },
+}

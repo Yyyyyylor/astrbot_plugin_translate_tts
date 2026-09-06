@@ -1,0 +1,44 @@
+{
+  "metadata": {
+    "display_name": "Translate TTS",
+    "short_desc": "Translate text only when an existing TTS path synthesizes speech.",
+    "desc": "Keep the original response and synthesize a configurable target-language translation through the TTS provider selected by the original path."
+  },
+  "config": {
+    "enabled": {
+      "description": "Enable TTS translation"
+    },
+    "translation_provider_id": {
+      "description": "Translation LLM provider",
+      "hint": "Used only for translation; it does not replace the chat provider. Leave empty to use the current session provider."
+    },
+    "target_language": {
+      "description": "Target language",
+      "labels": ["Japanese", "English", "Korean", "Simplified Chinese", "Traditional Chinese", "French", "German", "Spanish", "Custom"]
+    },
+    "custom_target_language": {
+      "description": "Custom target language name",
+      "hint": "Required only when Target language is set to Custom."
+    },
+    "translation_timeout_seconds": {
+      "description": "Total translation timeout (seconds)",
+      "hint": "Includes time waiting for a concurrency slot; valid range is 1–120 seconds."
+    },
+    "max_input_chars": {
+      "description": "Maximum source characters",
+      "hint": "Longer input skips translation and uses the complete original text for TTS."
+    },
+    "max_output_chars": {
+      "description": "Maximum translation characters",
+      "hint": "Longer model output is rejected and falls back to original-text TTS."
+    },
+    "max_concurrent_translations": {
+      "description": "Maximum concurrent translations",
+      "hint": "Limits simultaneous translation requests for this plugin instance."
+    },
+    "enable_proactive_compat": {
+      "description": "Enable proactive-chat compatibility",
+      "hint": "Enables translation for the TTS path in astrbot_plugin_proactive_chat v1.2.5."
+    }
+  }
+}
