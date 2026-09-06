@@ -78,10 +78,10 @@ AstrBot 生成配置示例（优先在 WebUI 中编辑）：
 
 ## 重载、禁用与升级
 
-- **重载：**保存配置后从 WebUI 重载。运行时包装带安装代次；新代次会停用旧代次，不叠加调用。
-- **禁用：**将 `enabled=false` 后重载，或在 WebUI 禁用/卸载。本插件只在属性仍指向自己的包装时恢复它，不覆盖后来安装的第三方包装。
-- **仅禁用主动兼容：**将 `enable_proactive_compat=false` 后重载；普通非流式回答仍可工作。
-- **升级：**停止插件后替换文件，再启动/重载并检查兼容日志；在 WebUI 核对旧的自定义语言配置。
+- <strong>重载：</strong> 保存配置后从 WebUI 重载。运行时包装带安装代次；新代次会停用旧代次，不叠加调用。
+- <strong>禁用：</strong> 将 `enabled=false` 后重载，或在 WebUI 禁用/卸载。本插件只在属性仍指向自己的包装时恢复它，不覆盖后来安装的第三方包装。
+- <strong>仅禁用主动兼容：</strong> 将 `enable_proactive_compat=false` 后重载；普通非流式回答仍可工作。
+- <strong>升级：</strong> 停止插件后替换文件，再启动/重载并检查兼容日志；在 WebUI 核对旧的自定义语言配置。
 
 升级到支持范围外时，对应适配器会以 `incompatible` 关闭该路径，不猜测变更后的内部 API。
 
@@ -89,12 +89,12 @@ AstrBot 生成配置示例（优先在 WebUI 中编辑）：
 
 在日志中搜索 `Translate TTS normal compatibility` 和 `Translate TTS proactive compatibility`。正常运行状态是 `signature_compatible_unverified`：所需签名匹配，但不证明特定源码 commit，也不证明 QQ 已实际收到或播放。
 
-- **没有译文语音，也没有翻译请求：**确认上游 TTS 确实触发、结果为非流式、本插件在会话启用，并已选择 TTS provider。
-- **仍播放原语言：**检查附近的 `TTS translation fallback` 日志，并核对 provider、超时、长度上限和自定义目标语言。
-- **译文合成后又尝试原文：**音色可能不支持目标语言，或 provider 返回空结果。
-- **看不到原文：**确认适配器不是 `incompatible`；主动聊天元数据必须恰为 `1.2.5`。
-- **主动适配为 `not_installed`：**加载/启用主动聊天，必要时重载本插件。
-- **重载后语音重复：**依次卸载两个插件，先加载主动聊天，再加载本插件；保留 `superseded`/签名日志。
+- <strong>没有译文语音，也没有翻译请求：</strong> 确认上游 TTS 确实触发、结果为非流式、本插件在会话启用，并已选择 TTS provider。
+- <strong>仍播放原语言：</strong> 检查附近的 `TTS translation fallback` 日志，并核对 provider、超时、长度上限和自定义目标语言。
+- <strong>译文合成后又尝试原文：</strong> 音色可能不支持目标语言，或 provider 返回空结果。
+- <strong>看不到原文：</strong> 确认适配器不是 `incompatible`；主动聊天元数据必须恰为 `1.2.5`。
+- <strong>主动适配为 `not_installed`：</strong> 加载/启用主动聊天，必要时重载本插件。
+- <strong>重载后语音重复：</strong> 依次卸载两个插件，先加载主动聊天，再加载本插件；保留 `superseded`/签名日志。
 
 本插件只记录来源类别、回退原因、异常类型和兼容状态，不主动记录原文、译文或密钥；AstrBot 本体和 provider 可能有各自日志策略。
 

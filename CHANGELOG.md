@@ -20,6 +20,11 @@ The working metadata version is `0.1.0`; no release has been published.
 - Reversible, generation-aware runtime patch management.
 - Compatibility status reporting, isolated unit tests, read-only probes, and bilingual documentation.
 
+### Fixed
+
+- Corrected Simplified Chinese README list labels that rendered literal Markdown emphasis markers.
+- Kept `_conf_schema.json` as strict JSON and excluded it from Ruff formatting.
+
 ### Documentation
 
 - Documented configuration, installation allowlist, reload/disable behavior, diagnostics, privacy boundaries, test commands, and the required live QQ acceptance checklist.
