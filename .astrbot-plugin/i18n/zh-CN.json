@@ -39,7 +39,7 @@
     },
     "translation_timeout_seconds": {
       "description": "翻译总超时（秒）",
-      "hint": "包含等待并发名额的时间，范围为 1–120 秒。"
+      "hint": "包含等待并发名额的时间。远程 LLM 通常建议设置为 60–120 秒；有效范围为 1–300 秒。"
     },
     "max_input_chars": {
       "description": "原文最大字符数",

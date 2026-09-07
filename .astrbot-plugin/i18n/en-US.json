@@ -39,7 +39,7 @@
     },
     "translation_timeout_seconds": {
       "description": "Total translation timeout (seconds)",
-      "hint": "Includes time waiting for a concurrency slot; valid range is 1–120 seconds."
+      "hint": "Includes time waiting for a concurrency slot. Remote LLM responses commonly need 60–120 seconds; valid range is 1–300 seconds."
     },
     "max_input_chars": {
       "description": "Maximum source characters",

@@ -35,7 +35,7 @@ Translate TTS 只改写“原有 AstrBot 链路已经决定送入 TTS”的文�
 
 ## 安装
 
-1. 从 [v1.2.0 Release](https://github.com/Yyyyyylor/astrbot_plugin_translate_tts/releases/tag/v1.2.0) 下载 `astrbot_plugin_translate_tts-v1.2.0.zip`。
+1. 从 [v1.2.1 Release](https://github.com/Yyyyyylor/astrbot_plugin_translate_tts/releases/tag/v1.2.1) 下载 `astrbot_plugin_translate_tts-v1.2.1.zip`。
 2. 在 AstrBot WebUI 的插件管理器中安装该 ZIP，或将 ZIP 根目录中的文件解压到 `AstrBot/data/plugins/astrbot_plugin_translate_tts`。
 3. 不要把本开发工作区中的 `data`、`temp`、缓存、数据库或配置产物复制到生产环境；文档和测试文件不是运行必需项。
 4. 启动 AstrBot，或在 **WebUI > 插件** 中重载。
@@ -67,7 +67,7 @@ Translate TTS 只改写“原有 AstrBot 链路已经决定送入 TTS”的文�
 | `translation_provider_id` | 空 | WebUI LLM 选择器。留空时解析当前会话 provider；明确选择的 provider 不可用时回退原文 TTS。 |
 | `target_language` | `ja` | `ja`、`en`、`ko`、`zh-CN`、`zh-TW`、`fr`、`de`、`es` 或 `custom`。 |
 | `custom_target_language` | 空 | 目标为 `custom` 时必须填写非空语言名称。 |
-| `translation_timeout_seconds` | `15` | 包括等待并发名额的总超时；范围 1–120 秒。 |
+| `translation_timeout_seconds` | `60` | 包括等待并发名额的总超时；范围 1–300 秒。远程 LLM 通常建议设置为 60–120 秒。 |
 | `max_input_chars` | `4000` | 范围 1–100000；超限时完整原文绕过翻译。 |
 | `max_output_chars` | `12000` | 范围 1–200000；超长模型输出会被拒绝。 |
 | `max_concurrent_translations` | `2` | 范围 1–100；仅限制本插件实例。 |
@@ -85,7 +85,7 @@ AstrBot 生成配置示例（优先在 WebUI 中编辑）：
   "translation_provider_id": "",
   "target_language": "ja",
   "custom_target_language": "",
-  "translation_timeout_seconds": 15,
+  "translation_timeout_seconds": 60,
   "max_input_chars": 4000,
   "max_output_chars": 12000,
   "max_concurrent_translations": 2,
@@ -123,7 +123,7 @@ Fish 路径会在同一次翻译调用中返回白名单 `fish_cues` 和可选 `
 在日志中搜索 `Translate TTS normal compatibility` 和 `Translate TTS proactive compatibility`。正常运行状态是 `signature_compatible_unverified`：所需签名匹配，但不证明特定源码 commit，也不证明 QQ 已实际收到或播放。
 
 - <strong>没有译文语音，也没有翻译请求：</strong> 确认上游 TTS 确实触发、结果为非流式、本插件在会话启用，并已选择 TTS provider。
-- <strong>仍播放原语言：</strong> 检查附近的 `TTS translation fallback` 日志，并核对 provider、超时、长度上限和自定义目标语言。
+- <strong>出现 `timeout` 后仍播放原语言：</strong> 将 `translation_timeout_seconds` 提高到 60–120 秒并重载插件。该时间包含等待并发名额和 LLM 返回耗时，同时请确认所选翻译 provider 可用。
 - <strong>译文合成后又尝试原文：</strong> 音色可能不支持目标语言，或 provider 返回空结果。
 - <strong>看不到原文：</strong> 确认适配器不是 `incompatible`；主动聊天元数据必须恰为 `1.2.5`。
 - <strong>主动适配为 `not_installed`：</strong> 加载/启用主动聊天，必要时重载本插件。

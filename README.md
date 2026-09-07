@@ -35,7 +35,7 @@ The visible message remains the original-language text; the translation is not d
 
 ## Installation
 
-1. Download `astrbot_plugin_translate_tts-v1.2.0.zip` from the [v1.2.0 release](https://github.com/Yyyyyylor/astrbot_plugin_translate_tts/releases/tag/v1.2.0).
+1. Download `astrbot_plugin_translate_tts-v1.2.1.zip` from the [v1.2.1 release](https://github.com/Yyyyyylor/astrbot_plugin_translate_tts/releases/tag/v1.2.1).
 2. In AstrBot WebUI, open the plugin manager and install the downloaded ZIP, or extract its root-level files into `AstrBot/data/plugins/astrbot_plugin_translate_tts`.
 3. Do not copy this checkout's local `data`, `temp`, cache, database, or configuration artifacts into production. Documentation and tests are optional for runtime use.
 4. Start AstrBot, or reload the plugin in **WebUI > Plugins**.
@@ -67,7 +67,7 @@ Cleanup is off by default and retains files for 30 days when enabled. Only real 
 | `translation_provider_id` | empty | WebUI LLM selector. Empty resolves the current session provider; an explicitly selected unavailable provider falls back to original-text TTS. |
 | `target_language` | `ja` | `ja`, `en`, `ko`, `zh-CN`, `zh-TW`, `fr`, `de`, `es`, or `custom`. |
 | `custom_target_language` | empty | Required non-empty language name when the target is `custom`. |
-| `translation_timeout_seconds` | `15` | Total timeout including concurrency wait; range 1–120 seconds. |
+| `translation_timeout_seconds` | `60` | Total timeout including concurrency wait; range 1–300 seconds. Remote LLMs commonly need 60–120 seconds. |
 | `max_input_chars` | `4000` | Range 1–100000. Longer input bypasses translation without truncation. |
 | `max_output_chars` | `12000` | Range 1–200000. Longer model output is rejected. |
 | `max_concurrent_translations` | `2` | Range 1–100, scoped to this plugin instance. |
@@ -85,7 +85,7 @@ Example generated AstrBot configuration (edit through WebUI when possible):
   "translation_provider_id": "",
   "target_language": "ja",
   "custom_target_language": "",
-  "translation_timeout_seconds": 15,
+  "translation_timeout_seconds": 60,
   "max_input_chars": 4000,
   "max_output_chars": 12000,
   "max_concurrent_translations": 2,
@@ -123,7 +123,7 @@ Outside supported versions, the affected adapter fails closed and logs `incompat
 Search logs for `Translate TTS normal compatibility` and `Translate TTS proactive compatibility`. The healthy runtime state is `signature_compatible_unverified`: required signatures matched, but this does not prove a source commit or successful QQ delivery.
 
 - **No translated audio or translation request:** confirm upstream TTS actually triggered, the result is non-streaming, this plugin is enabled for the session, and a TTS provider is selected.
-- **Original-language audio:** inspect nearby `TTS translation fallback` logs; check provider availability, timeout, limits, and custom target name.
+- **Original-language audio with a `timeout` fallback:** raise `translation_timeout_seconds` to 60–120 seconds and reload the plugin. The timeout includes concurrency waiting and the LLM response. Also verify that the selected translation provider is available.
 - **Translated synthesis retries original:** the voice may not support the target language or returned no audio.
 - **No visible original text:** confirm the adapter is not `incompatible`. For proactive chat, metadata must report exactly `1.2.5`.
 - **Proactive is `not_installed`:** load/enable proactive-chat and reload this plugin if needed.

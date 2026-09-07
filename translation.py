@@ -168,7 +168,11 @@ class TranslationService:
                 async with self._semaphore:
                     return await self._translate(source_text, scope)
         except TimeoutError:
-            logger.warning("TTS translation fallback: timeout source=%s", scope.source)
+            logger.warning(
+                "TTS translation fallback: timeout source=%s limit_seconds=%s",
+                scope.source,
+                settings.translation_timeout_seconds,
+            )
         except Exception as exc:  # noqa: BLE001 - translation failures must fall back
             logger.warning(
                 "TTS translation fallback: %s source=%s",

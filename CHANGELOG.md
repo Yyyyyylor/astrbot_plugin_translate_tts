@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-09-07
+
+### Fixed
+
+- Raised the default translation timeout from 15 to 60 seconds, expanded the supported ceiling to 300 seconds, and included the active limit in timeout logs so ordinary remote LLM latency is less likely to cause original-language TTS fallback.
+
 ## [1.2.0] - 2026-09-07
 
 ### Added
@@ -79,6 +85,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - No source text, translated text, or credentials are intentionally written to plugin logs or persistent storage.
 - Runtime adapters are limited by owner, task, session, source path, and active patch generation.
 
-[Unreleased]: https://github.com/Yyyyyylor/astrbot_plugin_translate_tts/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/Yyyyyylor/astrbot_plugin_translate_tts/compare/v1.2.1...HEAD
+[1.2.1]: https://github.com/Yyyyyylor/astrbot_plugin_translate_tts/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/Yyyyyylor/astrbot_plugin_translate_tts/compare/v1.0.0...v1.2.0
 [1.0.0]: https://github.com/Yyyyyylor/astrbot_plugin_translate_tts/releases/tag/v1.0.0

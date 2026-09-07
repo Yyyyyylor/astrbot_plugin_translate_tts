@@ -49,6 +49,17 @@ class SettingsTests(unittest.TestCase):
         settings = TranslationSettings.from_mapping({})
         self.assertEqual(settings.target_language_name(), "Japanese")
 
+    def test_translation_timeout_defaults_to_remote_safe_value(self):
+        settings = TranslationSettings.from_mapping({})
+        self.assertEqual(settings.translation_timeout_seconds, 60)
+
+    def test_translation_timeout_is_bounded(self):
+        with self.assertRaisesRegex(
+            ConfigurationError,
+            "translation_timeout_seconds must be between 1 and 300",
+        ):
+            TranslationSettings.from_mapping({"translation_timeout_seconds": 999})
+
     def test_custom_language_is_supported(self):
         settings = TranslationSettings.from_mapping(
             {"target_language": "custom", "custom_target_language": "Esperanto"}

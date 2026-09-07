@@ -63,7 +63,7 @@ class TranslationSettings:
     translation_provider_id: str = ""
     target_language: str = "ja"
     custom_target_language: str = ""
-    translation_timeout_seconds: int = 15
+    translation_timeout_seconds: int = 60
     max_input_chars: int = 4000
     max_output_chars: int = 12000
     max_concurrent_translations: int = 2
@@ -117,7 +117,7 @@ class TranslationSettings:
                 config.get("custom_target_language", "") or ""
             ).strip(),
             translation_timeout_seconds=_bounded_int(
-                config, "translation_timeout_seconds", 15, 1, 120
+                config, "translation_timeout_seconds", 60, 1, 300
             ),
             max_input_chars=_bounded_int(config, "max_input_chars", 4000, 1, 100_000),
             max_output_chars=_bounded_int(
