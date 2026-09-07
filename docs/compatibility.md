@@ -1,5 +1,13 @@
 # Compatibility and diagnostics
 
+## Version 1.2 operational boundaries
+
+- AstrBot 4.27.5 Plugin Pages and `register_web_api` are used for authenticated operations. Chat commands additionally carry AstrBot's `ADMIN` permission filter.
+- All ordinary and proactive synthesis still enters through `TranslatedTTSProviderProxy`; preview deliberately uses that same resolver/translation/adapter/fallback path rather than a second implementation.
+- Settings are parsed into a frozen `TranslationSettings` per plugin generation and captured by each scope. Save/reset operations report that reload is required; in-flight calls are unchanged.
+- The cleanup manifest is under `data/plugin_data/astrbot_plugin_translate_tts`, while eligible audio must resolve inside AstrBot's temporary directory. No shared directory enumeration or recursive delete is performed.
+- Offline tests cover parameters, state isolation, permissions/confirmation contracts, path rejection, cancellation cleanup, preprocessing, and prompt validation. They do not prove audible quality, account quota behavior, QQ delivery, or paid-service integration.
+
 This document separates runtime signature compatibility, pinned-source verification, simulated integration, and live end-to-end acceptance. Passing one level is not evidence for the levels after it.
 
 ## Supported matrix
@@ -9,6 +17,21 @@ This document separates runtime signature compatibility, pinned-source verificat
 | Normal reply | AstrBot 4.27.5, non-streaming | Async-generator `ResultDecorateStage.process(self, event)` and async `Context.get_using_tts_provider_async(self, umo)` | Streaming replies pass through. Signature mismatch disables the normal adapter. |
 | Proactive reply | `astrbot_plugin_proactive_chat` v1.2.5, reference commit `d1203524f29be248a4975bac1f7586e9557434ee` | Async bound `_send_proactive_message(session_id, text)`, synchronous bound `_get_session_config(session_id)`, and synchronous `Context.get_using_tts_provider(self, umo)` | Missing/inactive reports `not_installed`; any other version or signature mismatch reports `incompatible`. |
 | Delivery | AstrBot 4.27.5 `qq_official` | Existing AstrBot/proactive-chat sending and media-upload paths | No platform-specific upload or retry code is added. Other platforms are not declared supported. |
+
+## Emotion provider compatibility snapshot
+
+Checked read-only against local AstrBot 4.27.5 sources on 2026-09-07. All four `get_audio` methods accept only `text`; no emotion/model keyword argument is invented.
+
+| Provider class/type | Model recognition | Isolated request field | Evidence level |
+| --- | --- | --- | --- |
+| `ProviderFishAudioTTSAPI` / `fishaudio_tts_api` | Strict plugin `fish_model` allowlist | Copied `headers`, explicit model, and up to three allowlisted cues from the complete official reference: 49 emotions, 6 tones, 11 audio effects, 5 special effects; S1 excludes its two undocumented cues | Real class with fake HTTP stream; no real listening |
+| `ProviderElevenLabsTTSAPI` / `elevenlabs_tts_api` | Exact `eleven_v3` | Controlled text; shared client/voice/settings untouched | Real class with fake client |
+| `ProviderMiniMaxTTSAPI` / `minimax_tts_api` | Speech 02 and 2.6 hd/turbo | Shallow call copy plus copied `voice_setting.emotion` | Real serialized body inspected |
+| `ProviderGeminiTTSAPI` / `gemini_tts` | Explicit TTS model allowlist | Shallow call copy with combined `prefix` | Real SDK arguments captured by fake client |
+
+OpenAI, Azure, Edge, DashScope, VolcEngine, MiMo, GSVI, Genie, unknown types, and unsupported models remain translation-only. No emotion adaptation is claimed for them.
+
+Fish S2 accepts square-bracket cues and S1 accepts a fixed parenthesized vocabulary. The plugin intentionally restricts S2's otherwise free-form natural-language control to the documented allowlist so model output cannot inject arbitrary speech directions. Duplicate/unknown cues are removed and the documented maximum recommendation of three combined cues is enforced.
 
 `metadata.yaml` declares `astrbot_version: ">=4.27.5,<4.28"`, only `qq_official`, and the project repository `https://github.com/Yyyyyylor/astrbot_plugin_translate_tts`.
 
@@ -53,6 +76,9 @@ The authoritative defaults are in `_conf_schema.json`; the complete operator-fac
 | Keys | Accepted runtime contract | Diagnostic effect |
 | --- | --- | --- |
 | `enabled`, `enable_proactive_compat` | Booleans; both default to `true` | The master switch disables both paths; the proactive switch disables only proactive compatibility. Save and reload after changing either value. |
+| `emotion_enabled` | Boolean, default `true` | False keeps translation and TTS selection but emits no plugin-generated dynamic emotion control. |
+| `tts_provider_id`, `tts_selection_mode` | Real TTS ID or empty; `prefer_fish`/`follow_upstream` | Explicit ID wins. Missing/non-TTS explicit IDs preserve upstream source speech. Ambiguous Fish selection uses upstream. |
+| `fish_model` | `s2.1-pro-free`, `s2.1-pro`, `s2-pro`, or `s1` | Applied only to Fish call copies and sent in the real header. No automatic paid fallback. |
 | `translation_provider_id` | Provider ID string or empty | Empty asks AstrBot to resolve the current session provider. A non-empty unavailable ID falls back to original-text TTS without silently selecting another model. |
 | `target_language`, `custom_target_language` | One predefined language code, or `custom` with a non-empty name | Unknown codes and an empty custom name mark configuration invalid. Only one target language is active per plugin configuration. |
 | `translation_timeout_seconds` | Integer 1–120 | Covers both semaphore waiting and the LLM request. |
@@ -92,6 +118,8 @@ Remove-Item Env:PROACTIVE_CHAT_ROOT -ErrorAction SilentlyContinue
 ```
 
 ## Automated test scope
+
+`tests/real_provider_parameter_probe.py` is an offline probe for AstrBot's embedded Python. With `PYTHONPATH` containing the AstrBot backend app directory and this package parent, it loads the real four provider classes and captures final Fish, Eleven, MiniMax, and Gemini request parameters through fake transports/SDK clients. It never contacts a provider or QQ.
 
 From the package parent directory:
 

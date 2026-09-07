@@ -6,6 +6,43 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-09-07
+
+### Added
+
+- Safe built-in/append/replace translation and emotion prompts with controlled placeholders and protected output validation.
+- Deterministic pre-translation handling for fenced code, Markdown decoration, URLs, emoji, Markdown tables, quotes, whitespace, and bounded output.
+- Reply-scoped emotion continuity modes without confidence fields or cross-message persistence.
+- Manifest-only local audio registration, scheduled retention cleanup, status reporting, and confirmed manual cleanup.
+- Administrator-only, two-step TTS preview commands and a small AstrBot Plugin Page for prompt reset, preprocessing preview, provider/cost inspection, cancellation, confirmed synthesis, downloads, and cleanup.
+- Complete English/Simplified Chinese localization for the Control Page, plus prominent placeholder guidance beneath both custom-prompt fields.
+
+### Safety
+
+- Preview uses the formal provider resolver, translator, emotion adapters, isolated provider copies, timeout, cancellation, original fallback, and two-attempt ceiling.
+- Cleanup ignores URLs, directories, symlinks, out-of-root paths, and files absent from the plugin manifest; it never recursively clears shared directories.
+- Old configuration remains valid through defaults; active calls retain immutable settings snapshots across WebUI saves and reloads.
+
+## [1.1.0] - 2026-09-07
+
+### Added
+
+- One-call structured translation plus basic emotion classification with a strict eight-value vocabulary.
+- Real TTS provider selection and request-local adapters for Fish S2/S1, ElevenLabs v3, supported MiniMax Speech 02/2.6 models, and Gemini TTS.
+- Complete documented Fish cue control: 49 emotions, six tone cues, 11 audio effects, five special effects, and safe combinations of up to three cues; S1 automatically uses its smaller fixed set.
+- An offline parameter probe using the real AstrBot 4.27.5 provider classes and fake HTTP/SDK transports.
+
+### Changed
+
+- Fish defaults to `s2.1-pro-free` and sends that model in the actual request header on every Fish attempt.
+- Emotion is enabled by default but can be disabled independently of translation and provider selection.
+
+### Safety
+
+- Shared provider headers, voice settings, prefixes, clients, voices, endpoints, and credentials are not mutated.
+- Unsupported providers/models receive plain translated text; invalid explicit TTS IDs preserve the untouched upstream path.
+- Fish free failures never retry a paid Fish model.
+
 ## [1.0.0] - 2026-09-07
 
 ### Added
@@ -42,5 +79,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - No source text, translated text, or credentials are intentionally written to plugin logs or persistent storage.
 - Runtime adapters are limited by owner, task, session, source path, and active patch generation.
 
-[Unreleased]: https://github.com/Yyyyyylor/astrbot_plugin_translate_tts/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/Yyyyyylor/astrbot_plugin_translate_tts/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/Yyyyyylor/astrbot_plugin_translate_tts/compare/v1.0.0...v1.2.0
 [1.0.0]: https://github.com/Yyyyyylor/astrbot_plugin_translate_tts/releases/tag/v1.0.0

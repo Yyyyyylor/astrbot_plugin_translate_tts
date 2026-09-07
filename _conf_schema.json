@@ -4,6 +4,31 @@
         "description": "Enable translation for existing TTS calls",
         "default": true
     },
+    "emotion_enabled": {
+        "type": "bool",
+        "description": "Infer and apply basic emotion to supported TTS providers",
+        "default": true
+    },
+    "tts_provider_id": {
+        "type": "string",
+        "description": "TTS provider used for translated speech",
+        "hint": "Leave empty to use the selection mode. An explicit invalid ID falls back to the untouched upstream path.",
+        "default": "",
+        "_special": "select_provider_tts"
+    },
+    "tts_selection_mode": {
+        "type": "string",
+        "description": "TTS selection behavior when no provider ID is selected",
+        "default": "prefer_fish",
+        "options": ["prefer_fish", "follow_upstream"]
+    },
+    "fish_model": {
+        "type": "string",
+        "description": "Fish Audio model sent in every Fish request",
+        "hint": "The free default is sent explicitly; the plugin never retries with a paid model.",
+        "default": "s2.1-pro-free",
+        "options": ["s2.1-pro-free", "s2.1-pro", "s2-pro", "s1"]
+    },
     "translation_provider_id": {
         "type": "string",
         "description": "Translation LLM provider (empty uses the current session provider)",
@@ -47,5 +72,33 @@
         "type": "bool",
         "description": "Enable compatibility with astrbot_plugin_proactive_chat",
         "default": true
-    }
+    },
+    "custom_prompts_enabled": {"type":"bool","description":"Enable custom translation and emotion prompts","default":false},
+    "translation_prompt_mode": {"type":"string","description":"Translation prompt mode","default":"builtin","options":["builtin","append","replace"]},
+    "translation_prompt_text": {"type":"text","description":"Custom translation prompt","hint":"Placeholders: {target_language}=resolved target language; {emotion_options}=allowed basic emotions; {fish_cues}=Fish cue allowlist (empty outside Fish mode). Use double braces {{ and }} for literal braces. Unknown placeholders are rejected.","obvious_hint":true,"default":""},
+    "emotion_prompt_mode": {"type":"string","description":"Emotion prompt mode","default":"builtin","options":["builtin","append","replace"]},
+    "emotion_prompt_text": {"type":"text","description":"Custom emotion prompt","hint":"Placeholders: {target_language}=resolved target language; {emotion_options}=allowed basic emotions; {fish_cues}=Fish cue allowlist (empty outside Fish mode). Use double braces {{ and }} for literal braces. Unknown placeholders are rejected.","obvious_hint":true,"default":""},
+    "auto_cleanup_tts_files": {"type":"bool","description":"Automatically clean registered TTS files","default":false},
+    "tts_file_retention_days": {"type":"int","description":"TTS file retention days (1-365)","default":30,"slider":{"min":1,"max":365,"step":1}},
+    "cleanup_check_period": {"type":"string","description":"Cleanup check period","default":"daily","options":["startup","12h","daily","weekly"]},
+    "preprocessing_enabled": {"type":"bool","description":"Enable deterministic text preprocessing","default":false},
+    "code_block_mode": {"type":"string","description":"Code block handling","default":"preserve","options":["preserve","skip","replace"]},
+    "code_block_replacement": {"type":"string","description":"Code block replacement phrase","default":"code block omitted"},
+    "markdown_decoration_mode": {"type":"string","description":"Markdown decoration handling","default":"preserve","options":["preserve","remove"]},
+    "url_mode": {"type":"string","description":"URL handling","default":"full","options":["full","domain","replace","skip"]},
+    "url_replacement": {"type":"string","description":"URL replacement phrase","default":"link"},
+    "emoji_mode": {"type":"string","description":"Emoji handling","default":"preserve","options":["preserve","name","skip"]},
+    "table_mode": {"type":"string","description":"Markdown table handling","default":"lines","options":["lines","summary","skip"]},
+    "table_summary_text": {"type":"string","description":"Table summary phrase","default":"table omitted"},
+    "quote_mode": {"type":"string","description":"Block quote handling","default":"preserve","options":["preserve","skip"]},
+    "collapse_whitespace": {"type":"bool","description":"Collapse redundant whitespace","default":true},
+    "max_preprocessed_chars": {"type":"int","description":"Maximum preprocessing output length","default":4000,"slider":{"min":1,"max":100000,"step":1}},
+    "emotion_continuity_enabled": {"type":"bool","description":"Enable per-reply emotion continuity","default":false},
+    "emotion_continuity_mode": {"type":"string","description":"Emotion continuity mode","default":"off","options":["off","conservative","allow_transition","fixed_first"]},
+    "neutral_inherits": {"type":"bool","description":"Allow neutral segments to inherit the current reply emotion","default":true},
+    "max_continuity_segments": {"type":"int","description":"Maximum continuous segments per reply","default":20,"slider":{"min":1,"max":100,"step":1}},
+    "preview_text": {"type":"text","description":"TTS preview text (empty uses a safe sample)","default":""},
+    "preview_emotion": {"type":"string","description":"TTS preview emotion","default":"neutral","options":["neutral","happy","sad","angry","fearful","disgusted","surprised","calm"]},
+    "preview_translate": {"type":"bool","description":"Translate before TTS preview","default":true},
+    "preview_tts_provider_id": {"type":"string","description":"TTS provider used by preview","default":"","_special":"select_provider_tts"}
 }

@@ -8,6 +8,23 @@
     "enabled": {
       "description": "启用 TTS 翻译"
     },
+    "emotion_enabled": {
+      "description": "启用基础情感控制",
+      "hint": "关闭后仍保留翻译和 TTS 提供商选择。"
+    },
+    "tts_provider_id": {
+      "description": "译文语音 TTS 提供商",
+      "hint": "留空时按选择模式处理；显式 ID 无效时保持原上游链路。"
+    },
+    "tts_selection_mode": {
+      "description": "TTS 选择模式",
+      "labels": ["优先 Fish Audio", "沿用上游"]
+    },
+    "fish_model": {
+      "description": "Fish Audio 模型",
+      "hint": "每次 Fish 请求都会显式发送；不会回退到付费型号。",
+      "labels": ["S2.1 Pro 免费版", "S2.1 Pro", "S2 Pro", "S1"]
+    },
     "translation_provider_id": {
       "description": "翻译 LLM 提供商",
       "hint": "仅用于翻译，不会替换聊天提供商；留空时使用当前会话的聊天提供商。"
@@ -39,6 +56,35 @@
     "enable_proactive_compat": {
       "description": "启用主动聊天兼容",
       "hint": "为 astrbot_plugin_proactive_chat v1.2.5 的 TTS 路径启用翻译。"
-    }
-  }
+    },
+    "custom_prompts_enabled":{"description":"启用自定义提示词"},
+    "translation_prompt_mode":{"description":"翻译提示词模式","labels":["使用内置","追加到内置","完全替换"]},
+    "translation_prompt_text":{"description":"自定义翻译提示词","hint":"{target_language}：解析后的目标语言；{emotion_options}：允许的基础情感枚举；{fish_cues}：Fish 情感标签白名单（非 Fish 模式为空）。需要输入字面量大括号时请写 {{ 或 }}；未知占位符会被拒绝。"},
+    "emotion_prompt_mode":{"description":"情感提示词模式","labels":["使用内置","追加到内置","完全替换"]},
+    "emotion_prompt_text":{"description":"自定义情感提示词","hint":"{target_language}：解析后的目标语言；{emotion_options}：允许的基础情感枚举；{fish_cues}：Fish 情感标签白名单（非 Fish 模式为空）。需要输入字面量大括号时请写 {{ 或 }}；未知占位符会被拒绝。"},
+    "auto_cleanup_tts_files":{"description":"自动清理已登记的 TTS 文件"},
+    "tts_file_retention_days":{"description":"文件保留天数","hint":"范围 1–365 天，默认 30 天。"},
+    "cleanup_check_period":{"description":"清理检查周期","labels":["启动时","每 12 小时","每天","每周"]},
+    "preprocessing_enabled":{"description":"启用文本预处理"},
+    "code_block_mode":{"description":"代码块处理","labels":["保留","跳过","替换为提示语"]},
+    "code_block_replacement":{"description":"代码块替换提示语"},
+    "markdown_decoration_mode":{"description":"Markdown 装饰","labels":["保留","移除"]},
+    "url_mode":{"description":"URL 处理","labels":["完整朗读","只读域名","替换为提示语","跳过"]},
+    "url_replacement":{"description":"URL 替换提示语"},
+    "emoji_mode":{"description":"Emoji 处理","labels":["保留","转为名称","跳过"]},
+    "table_mode":{"description":"表格处理","labels":["逐行朗读","摘要提示","跳过"]},
+    "table_summary_text":{"description":"表格摘要提示语"},
+    "quote_mode":{"description":"引用处理","labels":["保留","跳过"]},
+    "collapse_whitespace":{"description":"折叠多余空白"},
+    "max_preprocessed_chars":{"description":"最大预处理输出长度"},
+    "emotion_continuity_enabled":{"description":"启用情感连续性"},
+    "emotion_continuity_mode":{"description":"连续性模式","labels":["关闭","保守继承","允许转换","固定首段"]},
+    "neutral_inherits":{"description":"neutral 分段继承当前情感"},
+    "max_continuity_segments":{"description":"最大连续分段数"},
+    "preview_text":{"description":"试听文本"},
+    "preview_emotion":{"description":"试听情感","labels":["中性","开心","悲伤","愤怒","害怕","厌恶","惊讶","平静"]},
+    "preview_translate":{"description":"试听前先翻译"},
+    "preview_tts_provider_id":{"description":"试听 TTS provider"}
+  },
+  "pages":{"control":{"title":"Translate TTS \u63a7\u5236\u53f0","description":"\u63d0\u793a\u8bcd\u6062\u590d\u3001\u9884\u5904\u7406\u9884\u89c8\u3001\u786e\u8ba4\u540e\u8bd5\u542c\u548c\u5b89\u5168\u6e05\u7406\u3002","intro":"\u5e38\u89c4\u8bbe\u7f6e\u8bf7\u5728\u63d2\u4ef6\u914d\u7f6e\u9875\u4fdd\u5b58\uff1bAstrBot \u91cd\u8f7d\u540e\u4f1a\u751f\u6210\u65b0\u7684\u4e0d\u53ef\u53d8\u8c03\u7528\u5feb\u7167\u3002","prompts_title":"\u63d0\u793a\u8bcd","prompts_desc":"\u53ef\u5206\u522b\u6062\u590d\u4e24\u79cd\u5185\u7f6e\u63d0\u793a\u8bcd\uff0c\u4e0d\u4f1a\u6539\u53d8\u6b63\u5728\u8fd0\u884c\u7684\u8c03\u7528\u3002","translation_guide":"\u7ffb\u8bd1\u63d0\u793a\u8bcd\u5360\u4f4d\u7b26\uff1a{target_language} \u8868\u793a\u89e3\u6790\u540e\u7684\u76ee\u6807\u8bed\u8a00\uff1b{emotion_options} \u8868\u793a\u5141\u8bb8\u7684\u57fa\u7840\u60c5\u611f\u5217\u8868\uff1b{fish_cues} \u8868\u793a Fish \u6807\u7b7e\u767d\u540d\u5355\uff0c\u975e Fish \u6a21\u5f0f\u65f6\u4e3a\u7a7a\u3002\u8f93\u5165\u5b57\u9762\u91cf\u5927\u62ec\u53f7\u65f6\u8bf7\u5199 {{ \u548c }}\u3002","emotion_guide":"\u60c5\u611f\u63d0\u793a\u8bcd\u53ef\u4f7f\u7528 {target_language}\u3001{emotion_options}\u3001{fish_cues}\u3002\u672a\u77e5\u5360\u4f4d\u7b26\u4f1a\u88ab\u62d2\u7edd\uff1b\u5b57\u9762\u91cf\u5927\u62ec\u53f7\u8bf7\u5199 {{ \u548c }}\u3002","reset_translation":"\u6062\u590d\u9ed8\u8ba4\u7ffb\u8bd1\u63d0\u793a\u8bcd","reset_emotion":"\u6062\u590d\u9ed8\u8ba4\u60c5\u611f\u63d0\u793a\u8bcd","preprocess_title":"\u6587\u672c\u9884\u5904\u7406\u9884\u89c8","test_text":"\u6d4b\u8bd5\u6587\u672c","preprocess":"\u9884\u5904\u7406\u9884\u89c8","result":"\u7ed3\u679c","preview_title":"TTS \u8bd5\u542c","preview_text":"\u8bd5\u542c\u6587\u672c\uff08\u7559\u7a7a\u65f6\u4f7f\u7528\u5b89\u5168\u793a\u4f8b\uff09","emotion":"\u8bd5\u542c\u60c5\u611f","provider":"\u8bd5\u542c TTS provider","translate_first":"\u5148\u7ffb\u8bd1","preview_plan":"\u751f\u6210\u8bd5\u542c\u8ba1\u5212","preview_generate":"\u786e\u8ba4\u53ef\u80fd\u6d88\u8017\u989d\u5ea6\u5e76\u751f\u6210","preview_cancel":"\u53d6\u6d88\u8bd5\u542c","download":"\u4e0b\u8f7d\u8bd5\u542c\u7ed3\u679c","cleanup_title":"\u6587\u4ef6\u6e05\u7406","cleanup_plan":"\u7acb\u5373\u6e05\u7406\u8fc7\u671f\u6587\u4ef6","cleanup_confirm":"\u786e\u8ba4\u5220\u9664\u5df2\u767b\u8bb0\u7684\u8fc7\u671f\u6587\u4ef6","provider_auto":"\u81ea\u52a8 / \u4f7f\u7528\u914d\u7f6e\u9ed8\u8ba4\u503c","unnamed":"\u672a\u547d\u540d","provider_type":"Provider \u7c7b\u578b","instance_id":"\u5b9e\u4f8b ID","model":"\u6a21\u578b","voice":"\u97f3\u8272","target_language":"\u76ee\u6807\u8bed\u8a00","emotion_protocol":"\u60c5\u611f\u534f\u8bae","may_consume_quota":"\u53ef\u80fd\u6d88\u8017\u989d\u5ea6","may_cost":"\u53ef\u80fd\u4ea7\u751f\u8d39\u7528","yes":"\u662f","no":"\u5426","cleanup_unavailable":"\u65e0\u6cd5\u83b7\u53d6\u6e05\u7406\u72b6\u6001\u3002","last_cleanup":"\u6700\u8fd1\u6e05\u7406\u65f6\u95f4","never":"\u5c1a\u672a\u6267\u884c","next_check":"\u4e0b\u6b21\u68c0\u67e5\u65f6\u95f4","deleted_files":"\u5220\u9664\u6587\u4ef6\u6570","released_bytes":"\u91ca\u653e\u7a7a\u95f4\uff08\u5b57\u8282\uff09","error_types":"\u9519\u8bef\u7c7b\u578b","none":"\u65e0","preview_warning":"\u771f\u5b9e\u5408\u6210\u53ef\u80fd\u6d88\u8017 provider \u989d\u5ea6\u3002","preview_generated":"\u8bd5\u542c\u751f\u6210\u6210\u529f","cleanup_warning":"\u5373\u5c06\u5220\u9664\u5df2\u767b\u8bb0\u7684\u8fc7\u671f\u6587\u4ef6\u3002","emotion_neutral":"\u4e2d\u6027","emotion_happy":"\u5f00\u5fc3","emotion_sad":"\u60b2\u4f24","emotion_angry":"\u6124\u6012","emotion_fearful":"\u5bb3\u6015","emotion_disgusted":"\u538c\u6076","emotion_surprised":"\u60ca\u8bb6","emotion_calm":"\u5e73\u9759"}}
 }

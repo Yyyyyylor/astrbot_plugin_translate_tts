@@ -39,6 +39,7 @@ class FakeContext:
 
 
 def make_scope(**overrides) -> TranslationScope:
+    overrides.setdefault("emotion_enabled", False)
     settings = TranslationSettings.from_mapping(overrides)
     return TranslationScope("normal", "qq_official:FriendMessage:42", settings)
 
@@ -69,7 +70,8 @@ class TranslationTests(unittest.IsolatedAsyncioTestCase):
         result = await TranslationService(context).translate_for_tts(
             "你好", make_scope()
         )
-        self.assertEqual(result, "こんにちは")
+        self.assertEqual(result.text, "こんにちは")
+        self.assertTrue(result.success)
         self.assertEqual(context.resolve_calls, ["qq_official:FriendMessage:42"])
         self.assertEqual(
             context.generate_calls[0],
@@ -90,7 +92,8 @@ class TranslationTests(unittest.IsolatedAsyncioTestCase):
         result = await TranslationService(context).translate_for_tts(
             "原文", make_scope(translation_provider_id="removed-provider")
         )
-        self.assertEqual(result, "原文")
+        self.assertEqual(result.text, "原文")
+        self.assertFalse(result.success)
         self.assertEqual(context.resolve_calls, [])
         self.assertEqual(
             context.generate_calls[0]["chat_provider_id"], "removed-provider"
@@ -112,7 +115,8 @@ class TranslationTests(unittest.IsolatedAsyncioTestCase):
                 result = await TranslationService(context).translate_for_tts(
                     "source", make_scope(max_output_chars=5)
                 )
-                self.assertEqual(result, "source")
+                self.assertEqual(result.text, "source")
+                self.assertFalse(result.success)
 
     async def test_refusal_metadata_falls_back(self):
         message = SimpleNamespace(refusal="cannot translate")
@@ -125,7 +129,7 @@ class TranslationTests(unittest.IsolatedAsyncioTestCase):
         result = await TranslationService(context).translate_for_tts(
             "原文", make_scope()
         )
-        self.assertEqual(result, "原文")
+        self.assertEqual(result.text, "原文")
 
     async def test_whole_response_plain_text_refusals_fall_back(self):
         refusals = (
@@ -141,7 +145,7 @@ class TranslationTests(unittest.IsolatedAsyncioTestCase):
                 result = await TranslationService(context).translate_for_tts(
                     "原文", make_scope()
                 )
-                self.assertEqual(result, "原文")
+                self.assertEqual(result.text, "原文")
 
     async def test_normal_text_containing_refusal_words_is_not_rejected(self):
         translations = (
@@ -157,14 +161,14 @@ class TranslationTests(unittest.IsolatedAsyncioTestCase):
                 result = await TranslationService(context).translate_for_tts(
                     "source", make_scope()
                 )
-                self.assertEqual(result, translation)
+                self.assertEqual(result.text, translation)
 
     async def test_oversized_input_is_not_truncated_or_sent(self):
         context = FakeContext()
         result = await TranslationService(context).translate_for_tts(
             "abcdef", make_scope(max_input_chars=5)
         )
-        self.assertEqual(result, "abcdef")
+        self.assertEqual(result.text, "abcdef")
         self.assertEqual(context.generate_calls, [])
 
     async def test_timeout_includes_waiting_for_concurrency_slot(self):
@@ -184,10 +188,10 @@ class TranslationTests(unittest.IsolatedAsyncioTestCase):
         first = asyncio.create_task(service.translate_for_tts("first", long_scope))
         await entered.wait()
         result = await service.translate_for_tts("second", waiting_scope)
-        self.assertEqual(result, "second")
+        self.assertEqual(result.text, "second")
         self.assertEqual(len(context.generate_calls), 1)
         release.set()
-        self.assertEqual(await first, "translated")
+        self.assertEqual((await first).text, "translated")
 
     async def test_concurrency_never_exceeds_limit(self):
         context = FakeContext()
@@ -207,7 +211,7 @@ class TranslationTests(unittest.IsolatedAsyncioTestCase):
         results = await asyncio.gather(
             *(service.translate_for_tts(str(index), make_scope()) for index in range(6))
         )
-        self.assertEqual(results, ["ok"] * 6)
+        self.assertEqual([result.text for result in results], ["ok"] * 6)
         self.assertEqual(peak, 2)
 
     async def test_cancelled_error_propagates(self):
@@ -219,6 +223,69 @@ class TranslationTests(unittest.IsolatedAsyncioTestCase):
         context.generate_hook = cancelled_response
         with self.assertRaises(asyncio.CancelledError):
             await TranslationService(context).translate_for_tts("原文", make_scope())
+
+    async def test_structured_translation_uses_one_call_and_validates_emotion(self):
+        context = FakeContext(
+            SimpleNamespace(
+                role="assistant",
+                completion_text='{"text":"やっと会えたね！","emotion":"happy"}',
+            )
+        )
+        result = await TranslationService(context).translate_for_tts(
+            "终于见到你了！", make_scope(emotion_enabled=True)
+        )
+        self.assertEqual(result.text, "やっと会えたね！")
+        self.assertEqual(result.emotion, "happy")
+        self.assertTrue(result.success)
+        self.assertEqual(len(context.generate_calls), 1)
+
+    async def test_unknown_emotion_fails_closed_to_original(self):
+        context = FakeContext(
+            SimpleNamespace(
+                role="assistant",
+                completion_text='{"text":"こんにちは","emotion":"melancholy"}',
+            )
+        )
+        result = await TranslationService(context).translate_for_tts(
+            "你好", make_scope(emotion_enabled=True)
+        )
+        self.assertEqual(
+            (result.text, result.emotion, result.success),
+            ("你好", "neutral", False),
+        )
+
+    async def test_bad_structured_output_never_reads_json_aloud(self):
+        context = FakeContext(
+            SimpleNamespace(role="assistant", completion_text="```json {} ```")
+        )
+        result = await TranslationService(context).translate_for_tts(
+            "原文", make_scope(emotion_enabled=True)
+        )
+        self.assertEqual(result.text, "原文")
+        self.assertFalse(result.success)
+
+    async def test_fish_structured_output_accepts_full_documented_cues(self):
+        context = FakeContext(
+            SimpleNamespace(
+                role="assistant",
+                completion_text=(
+                    '{"text":"静かに聞いて。","emotion":"calm",'
+                    '"fish_cues":["nostalgic","whispering","sighing","angry"],'
+                    '"fish_segments":[]}'
+                ),
+            )
+        )
+        scope = make_scope(emotion_enabled=True)
+        scope.selected_provider_type = "fishaudio_tts_api"
+        scope.selected_fish_model = "s2.1-pro-free"
+        result = await TranslationService(context).translate_for_tts("静静听。", scope)
+        self.assertEqual(
+            result.fish_cues,
+            ("nostalgic", "whispering", "sighing"),
+        )
+        prompt = context.generate_calls[0]["system_prompt"]
+        self.assertIn("background laughter", prompt)
+        self.assertIn("zero to three", prompt)
 
 
 class LifecycleTests(unittest.IsolatedAsyncioTestCase):
@@ -265,6 +332,13 @@ class LifecycleTests(unittest.IsolatedAsyncioTestCase):
             module = importlib.import_module("translate_tts.main")
             plugin = module.TranslateTTSPlugin(FakeContext(), AstrBotConfig())
             self.assertTrue(plugin.translation_service._active)
+            confirmation = plugin._issue_confirmation("admin", {"operation": "preview"})
+            self.assertEqual(
+                plugin._consume_confirmation(confirmation, "admin")["operation"],
+                "preview",
+            )
+            with self.assertRaises(PermissionError):
+                plugin._consume_confirmation(confirmation, "admin")
             await plugin.terminate()
             self.assertFalse(plugin.translation_service._active)
 
