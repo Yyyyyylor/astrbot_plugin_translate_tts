@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
-The working metadata version is `0.1.0`; no release has been published.
+## [1.0.0] - 2026-09-07
 
 ### Added
 
@@ -41,3 +41,6 @@ The working metadata version is `0.1.0`; no release has been published.
 
 - No source text, translated text, or credentials are intentionally written to plugin logs or persistent storage.
 - Runtime adapters are limited by owner, task, session, source path, and active patch generation.
+
+[Unreleased]: https://github.com/Yyyyyylor/astrbot_plugin_translate_tts/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/Yyyyyylor/astrbot_plugin_translate_tts/releases/tag/v1.0.0

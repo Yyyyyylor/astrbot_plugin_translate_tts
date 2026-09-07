@@ -34,8 +34,8 @@ Translate TTS 只改写“原有 AstrBot 链路已经决定送入 TTS”的文�
 
 ## 安装
 
-1. 停止 AstrBot，或在维护窗口使用插件管理器。
-2. 创建 `AstrBot/data/plugins/astrbot_plugin_translate_tts`，再复制运行所需的 `__init__.py`、`main.py`、`config.py`、`scope.py`、`translation.py`、`tts_proxy.py`、`metadata.yaml`、`_conf_schema.json`、`.astrbot-plugin` 和 `compat` 目录。
+1. 从 [v1.0.0 Release](https://github.com/Yyyyyylor/astrbot_plugin_translate_tts/releases/tag/v1.0.0) 下载 `astrbot_plugin_translate_tts-v1.0.0.zip`。
+2. 在 AstrBot WebUI 的插件管理器中安装该 ZIP，或将 ZIP 根目录中的文件解压到 `AstrBot/data/plugins/astrbot_plugin_translate_tts`。
 3. 不要把本开发工作区中的 `data`、`temp`、缓存、数据库或配置产物复制到生产环境；文档和测试文件不是运行必需项。
 4. 启动 AstrBot，或在 **WebUI > 插件** 中重载。
 5. 在插件配置中选择翻译 LLM 与目标语言，保存后再重载一次。

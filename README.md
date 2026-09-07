@@ -34,8 +34,8 @@ The visible message remains the original-language text; the translation is not d
 
 ## Installation
 
-1. Stop AstrBot or use its plugin manager during a maintenance window.
-2. Create `AstrBot/data/plugins/astrbot_plugin_translate_tts`, then copy the runtime files `__init__.py`, `main.py`, `config.py`, `scope.py`, `translation.py`, `tts_proxy.py`, `metadata.yaml`, `_conf_schema.json`, `.astrbot-plugin`, and the `compat` directory into it.
+1. Download `astrbot_plugin_translate_tts-v1.0.0.zip` from the [v1.0.0 release](https://github.com/Yyyyyylor/astrbot_plugin_translate_tts/releases/tag/v1.0.0).
+2. In AstrBot WebUI, open the plugin manager and install the downloaded ZIP, or extract its root-level files into `AstrBot/data/plugins/astrbot_plugin_translate_tts`.
 3. Do not copy this checkout's local `data`, `temp`, cache, database, or configuration artifacts into production. Documentation and tests are optional for runtime use.
 4. Start AstrBot, or reload the plugin in **WebUI > Plugins**.
 5. Select the translation LLM and target language in the plugin configuration, save, and reload once.
