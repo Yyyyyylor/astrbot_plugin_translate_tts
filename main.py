@@ -1,6 +1,7 @@
 """AstrBot plugin lifecycle, admin preview, and bounded WebUI operations."""
 
 import asyncio
+import json
 import secrets
 import time
 from dataclasses import replace
@@ -14,6 +15,7 @@ from .admin import is_dashboard_admin
 from .compat.astrbot_4_27 import NormalPipelineAdapter, install_astrbot_4_27_adapter
 from .compat.proactive_chat import ProactiveChatAdapter
 from .config import ConfigurationError, TranslationSettings
+from .diagnostics import DiagnosticRecorder
 from .emotion import EMOTIONS
 from .file_cleanup import AudioFileRegistry, CleanupScheduler
 from .preprocess import preprocess_text
@@ -67,10 +69,30 @@ class TranslateTTSPlugin(Star):
             logger.error("Translate TTS configuration is invalid: %s", exc)
             self.settings = TranslationSettings(enabled=False)
             configuration_valid = False
+        self.diagnostics = DiagnosticRecorder(
+            logger,
+            level=self.settings.diagnostic_log_level,
+            capacity=self.settings.diagnostic_event_buffer_size,
+        )
+        self.diagnostics.emit(
+            "plugin_initialized",
+            configuration_valid=configuration_valid,
+            enabled=self.settings.enabled,
+            llm_timeout_seconds=self.settings.translation_timeout_seconds,
+            queue_timeout_seconds=self.settings.translation_queue_timeout_seconds,
+            max_concurrency=self.settings.max_concurrent_translations,
+            translation_provider=(
+                "configured" if self.settings.translation_provider_id else "session"
+            ),
+            tts_selection_mode=self.settings.tts_selection_mode,
+            emotion_enabled=self.settings.emotion_enabled,
+            diagnostic_schema=1,
+        )
         self.translation_service = TranslationService(
             context,
             max_concurrency=self.settings.max_concurrent_translations,
             audio_registry=self.audio_registry,
+            diagnostics=self.diagnostics,
         )
         if not configuration_valid:
             self.translation_service.close()
@@ -145,6 +167,7 @@ class TranslateTTSPlugin(Star):
 
     async def terminate(self) -> None:
         """Stop accepting new translation work during unload or reload."""
+        self.diagnostics.emit("plugin_terminating")
         self.translation_service.close()
         self.proactive_adapter.close()
         self.normal_adapter.close()
@@ -356,7 +379,30 @@ class TranslateTTSPlugin(Star):
             if self.audio_registry
             else None
         )
-        return web.json_response({"providers": providers, "cleanup": cleanup})
+        return web.json_response(
+            {
+                "providers": providers,
+                "cleanup": cleanup,
+                "diagnostics": self._diagnostic_status(limit=50),
+            }
+        )
+
+    def _diagnostic_status(self, *, limit: int = 20) -> dict:
+        status = self.diagnostics.snapshot(limit=limit)
+        status["settings"] = {
+            "llm_timeout_seconds": self.settings.translation_timeout_seconds,
+            "queue_timeout_seconds": self.settings.translation_queue_timeout_seconds,
+            "max_concurrency": self.settings.max_concurrent_translations,
+            "translation_provider": (
+                "configured" if self.settings.translation_provider_id else "session"
+            ),
+            "diagnostic_log_level": self.settings.diagnostic_log_level,
+        }
+        status["compatibility"] = {
+            name: str(getattr(value, "state", "unknown"))
+            for name, value in self.compatibility_statuses.items()
+        }
+        return status
 
     async def _web_preprocess(self):
         from astrbot.api import web
@@ -564,6 +610,18 @@ class TranslateTTSPlugin(Star):
         if path is None:
             return web.error_response("download is unavailable", status_code=404)
         return web.file_response(path, filename=path.name)
+
+    @_permission_type(_admin)
+    @_command("tts_diagnostics")
+    async def tts_diagnostics(self, event):
+        """Return a privacy-safe Translate TTS diagnostic snapshot."""
+        yield event.plain_result(
+            json.dumps(
+                self._diagnostic_status(limit=10),
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
 
     @_permission_type(_admin)
     @_command("tts_preview")

@@ -67,11 +67,15 @@ Translate TTS 只改写“原有 AstrBot 链路已经决定送入 TTS”的文�
 | `translation_provider_id` | 空 | WebUI LLM 选择器。留空时解析当前会话 provider；明确选择的 provider 不可用时回退原文 TTS。 |
 | `target_language` | `ja` | `ja`、`en`、`ko`、`zh-CN`、`zh-TW`、`fr`、`de`、`es` 或 `custom`。 |
 | `custom_target_language` | 空 | 目标为 `custom` 时必须填写非空语言名称。 |
-| `translation_timeout_seconds` | `60` | 包括等待并发名额的总超时；范围 1–300 秒。远程 LLM 通常建议设置为 60–120 秒。 |
+| `translation_timeout_seconds` | `60` | 获取并发名额后的 LLM 调用截止时间；范围 1–300 秒，不覆盖 provider 自身的 HTTP/SDK 超时。 |
+| `translation_queue_timeout_seconds` | `10` | 等待插件翻译并发名额的最长时间；范围 1–60 秒。 |
 | `max_input_chars` | `4000` | 范围 1–100000；超限时完整原文绕过翻译。 |
 | `max_output_chars` | `12000` | 范围 1–200000；超长模型输出会被拒绝。 |
 | `max_concurrent_translations` | `2` | 范围 1–100；仅限制本插件实例。 |
 | `enable_proactive_compat` | `true` | 启用主动聊天 v1.2.5 运行时适配。 |
+| `diagnostic_log_level` | `normal` | `minimal`、`normal` 或 `verbose`；绝不包含消息、译文、endpoint/代理地址或凭据。 |
+| `diagnostic_event_buffer_size` | `100` | 在内存中保留 20–500 条管理员安全事件；重载即清空。 |
+| `slow_phase_warning_seconds` | `15` | 翻译或 TTS 超过该时长时记录警告。 |
 
 AstrBot 生成配置示例（优先在 WebUI 中编辑）：
 
@@ -86,6 +90,7 @@ AstrBot 生成配置示例（优先在 WebUI 中编辑）：
   "target_language": "ja",
   "custom_target_language": "",
   "translation_timeout_seconds": 60,
+  "translation_queue_timeout_seconds": 10,
   "max_input_chars": 4000,
   "max_output_chars": 12000,
   "max_concurrent_translations": 2,
@@ -123,13 +128,19 @@ Fish 路径会在同一次翻译调用中返回白名单 `fish_cues` 和可选 `
 在日志中搜索 `Translate TTS normal compatibility` 和 `Translate TTS proactive compatibility`。正常运行状态是 `signature_compatible_unverified`：所需签名匹配，但不证明特定源码 commit，也不证明 QQ 已实际收到或播放。
 
 - <strong>没有译文语音，也没有翻译请求：</strong> 确认上游 TTS 确实触发、结果为非流式、本插件在会话启用，并已选择 TTS provider。
-- <strong>出现 `timeout` 后仍播放原语言：</strong> 将 `translation_timeout_seconds` 提高到 60–120 秒并重载插件。该时间包含等待并发名额和 LLM 返回耗时，同时请确认所选翻译 provider 可用。
+- <strong>`reason=queue_timeout`：</strong> 插件未能取得翻译并发名额；可谨慎提高 `translation_queue_timeout_seconds` 或 `max_concurrent_translations`。
+- <strong>`reason=plugin_deadline`：</strong> 插件设置的 LLM 调用截止时间已到；可提高 `translation_timeout_seconds`，或选择更快的专用翻译 provider。
+- <strong>`reason=provider_timeout`：</strong> 所选 LLM provider 自身的 HTTP/SDK 超时；必须调整该 provider 的 timeout/代理，仅提高插件 timeout 无法解决。
+- <strong>Docker 代理：</strong> 翻译 provider 必须能从容器内部访问代理。宿主机代理若写为 `127.0.0.1`，实际指向容器本身；请改用容器可访问的主机名/地址，并先在 AstrBot WebUI 测试 provider。
+- <strong>QQ Official `APIReturnNoneError`：</strong> 这是 botpy 返回 `None` 后由 AstrBot QQ 适配器抛出的重试异常，与翻译异常分离。若随后出现 `Websocket session starting`，说明 QQ 连接发生波动；请检查容器出口、全局代理和 QQ 凭据，并在禁用本插件时测试普通纯文本回复。
 - <strong>译文合成后又尝试原文：</strong> 音色可能不支持目标语言，或 provider 返回空结果。
 - <strong>看不到原文：</strong> 确认适配器不是 `incompatible`；主动聊天元数据必须恰为 `1.2.5`。
 - <strong>主动适配为 `not_installed`：</strong> 加载/启用主动聊天，必要时重载本插件。
 - <strong>重载后语音重复：</strong> 依次卸载两个插件，先加载主动聊天，再加载本插件；保留 `superseded`/签名日志。
 
-本插件只记录来源类别、回退原因、异常类型和兼容状态，不主动记录原文、译文或密钥；AstrBot 本体和 provider 可能有各自日志策略。
+管理员可使用 `/tts_diagnostics`，或打开控制台中的“诊断”卡片，查看当前不可变 timeout、provider 哈希引用、provider 类型和内部 timeout、代理来源是否存在、各阶段耗时与最近结果。`diagnostic_log_level=verbose` 会把全部安全阶段事件写入 AstrBot 日志；内存事件有数量上限，重载即清空。
+
+插件绝不记录原文、译文、提示词、响应内容、endpoint、代理地址、令牌或凭据。异常只记录类型链，不记录异常消息；AstrBot 本体和 provider 可能有各自日志策略。
 
 ## 隐私与安全
 

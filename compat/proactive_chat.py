@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import functools
 import inspect
+import time
 from typing import Any
 
 from ..scope import TranslationScope, current_translation_scope
@@ -348,10 +349,32 @@ class ProactiveChatAdapter:
                 owner=adapter.instance,
                 owner_task=asyncio.current_task(),
             )
+            diagnostics = getattr(adapter.plugin, "diagnostics", None)
+            if diagnostics is not None:
+                diagnostics.emit(
+                    "scope_started",
+                    detail=True,
+                    trace_id=scope.trace_id,
+                    source=scope.source,
+                )
             token = current_translation_scope.set(scope)
             try:
                 await original(session_id, text)
             finally:
+                if diagnostics is not None:
+                    diagnostics.emit(
+                        "scope_closed",
+                        detail=True,
+                        trace_id=scope.trace_id,
+                        source=scope.source,
+                        conversions=len(scope.conversions),
+                        produced_audio=sum(
+                            entry.produced_audio for entry in scope.conversions
+                        ),
+                        elapsed_ms=round(
+                            (time.monotonic() - scope.started_monotonic) * 1000
+                        ),
+                    )
                 scope.deactivate()
                 current_translation_scope.reset(token)
 

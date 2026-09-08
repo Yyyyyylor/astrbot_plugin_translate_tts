@@ -51,6 +51,8 @@ class PluginI18nTests(unittest.TestCase):
             "provider_type",
             "last_cleanup",
             "preview_warning",
+            "diagnostics_title",
+            "diagnostics_refresh",
         }
         self.assertTrue(required.issubset(english["pages"]["control"]))
         with (ROOT / "_conf_schema.json").open(encoding="utf-8") as file:
@@ -79,6 +81,7 @@ class PluginI18nTests(unittest.TestCase):
             "quote_mode",
             "emotion_continuity_mode",
             "preview_emotion",
+            "diagnostic_log_level",
         ):
             option_count = len(schema[field]["options"])
             for locale in ("en-US", "zh-CN"):

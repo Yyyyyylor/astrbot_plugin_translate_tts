@@ -1,90 +1,311 @@
 {
-  "metadata": {
-    "display_name": "Translate TTS",
-    "short_desc": "Translate text only when an existing TTS path synthesizes speech.",
-    "desc": "Keep the original response and synthesize a configurable target-language translation through the TTS provider selected by the original path."
-  },
-  "config": {
-    "enabled": {
-      "description": "Enable TTS translation"
+    "metadata": {
+        "display_name": "Translate TTS",
+        "short_desc": "Translate text only when an existing TTS path synthesizes speech.",
+        "desc": "Keep the original response and synthesize a configurable target-language translation through the TTS provider selected by the original path."
     },
-    "emotion_enabled": {
-      "description": "Enable basic emotion control",
-      "hint": "Disabling emotion keeps translation and TTS provider selection enabled."
+    "config": {
+        "enabled": {
+            "description": "Enable TTS translation"
+        },
+        "emotion_enabled": {
+            "description": "Enable basic emotion control",
+            "hint": "Disabling emotion keeps translation and TTS provider selection enabled."
+        },
+        "tts_provider_id": {
+            "description": "Translated-speech TTS provider",
+            "hint": "Leave empty to use the selection mode; invalid explicit IDs preserve the upstream path."
+        },
+        "tts_selection_mode": {
+            "description": "TTS selection mode",
+            "labels": [
+                "Prefer Fish Audio",
+                "Follow upstream"
+            ]
+        },
+        "fish_model": {
+            "description": "Fish Audio model",
+            "hint": "Sent explicitly on every Fish request; no paid-model fallback.",
+            "labels": [
+                "S2.1 Pro Free",
+                "S2.1 Pro",
+                "S2 Pro",
+                "S1"
+            ]
+        },
+        "translation_provider_id": {
+            "description": "Translation LLM provider",
+            "hint": "Used only for translation; it does not replace the chat provider. Leave empty to use the current session provider."
+        },
+        "target_language": {
+            "description": "Target language",
+            "labels": [
+                "Japanese",
+                "English",
+                "Korean",
+                "Simplified Chinese",
+                "Traditional Chinese",
+                "French",
+                "German",
+                "Spanish",
+                "Custom"
+            ]
+        },
+        "custom_target_language": {
+            "description": "Custom target language name",
+            "hint": "Required only when Target language is set to Custom."
+        },
+        "translation_timeout_seconds": {
+            "description": "Translation LLM timeout (seconds)",
+            "hint": "Starts after a concurrency slot is acquired. Provider HTTP/SDK timeout remains separate."
+        },
+        "translation_queue_timeout_seconds": {
+            "description": "Translation queue timeout (seconds)",
+            "hint": "Maximum wait for a concurrency slot; range 1\u201360 seconds."
+        },
+        "max_input_chars": {
+            "description": "Maximum source characters",
+            "hint": "Longer input skips translation and uses the complete original text for TTS."
+        },
+        "max_output_chars": {
+            "description": "Maximum translation characters",
+            "hint": "Longer model output is rejected and falls back to original-text TTS."
+        },
+        "max_concurrent_translations": {
+            "description": "Maximum concurrent translations",
+            "hint": "Limits simultaneous translation requests for this plugin instance."
+        },
+        "enable_proactive_compat": {
+            "description": "Enable proactive-chat compatibility",
+            "hint": "Enables translation for the TTS path in astrbot_plugin_proactive_chat v1.2.5."
+        },
+        "custom_prompts_enabled": {
+            "description": "Enable custom prompts"
+        },
+        "translation_prompt_mode": {
+            "description": "Translation prompt mode",
+            "labels": [
+                "Use built-in",
+                "Append to built-in",
+                "Replace built-in"
+            ]
+        },
+        "translation_prompt_text": {
+            "description": "Custom translation prompt",
+            "hint": "{target_language}: resolved target language; {emotion_options}: allowed basic emotions; {fish_cues}: Fish cue allowlist (empty outside Fish mode). Write {{ or }} for a literal brace. Unknown placeholders are rejected."
+        },
+        "emotion_prompt_mode": {
+            "description": "Emotion prompt mode",
+            "labels": [
+                "Use built-in",
+                "Append to built-in",
+                "Replace built-in"
+            ]
+        },
+        "emotion_prompt_text": {
+            "description": "Custom emotion prompt",
+            "hint": "{target_language}: resolved target language; {emotion_options}: allowed basic emotions; {fish_cues}: Fish cue allowlist (empty outside Fish mode). Write {{ or }} for a literal brace. Unknown placeholders are rejected."
+        },
+        "auto_cleanup_tts_files": {
+            "description": "Automatically clean registered TTS files"
+        },
+        "tts_file_retention_days": {
+            "description": "File retention days",
+            "hint": "1\u2013365 days; default 30."
+        },
+        "cleanup_check_period": {
+            "description": "Cleanup check period",
+            "labels": [
+                "At startup",
+                "Every 12 hours",
+                "Daily",
+                "Weekly"
+            ]
+        },
+        "preprocessing_enabled": {
+            "description": "Enable text preprocessing"
+        },
+        "code_block_mode": {
+            "description": "Code block handling",
+            "labels": [
+                "Preserve",
+                "Skip",
+                "Replace with phrase"
+            ]
+        },
+        "code_block_replacement": {
+            "description": "Code block replacement phrase"
+        },
+        "markdown_decoration_mode": {
+            "description": "Markdown decoration",
+            "labels": [
+                "Preserve",
+                "Remove"
+            ]
+        },
+        "url_mode": {
+            "description": "URL handling",
+            "labels": [
+                "Read full URL",
+                "Read domain",
+                "Replace with phrase",
+                "Skip"
+            ]
+        },
+        "url_replacement": {
+            "description": "URL replacement phrase"
+        },
+        "emoji_mode": {
+            "description": "Emoji handling",
+            "labels": [
+                "Preserve",
+                "Convert to name",
+                "Skip"
+            ]
+        },
+        "table_mode": {
+            "description": "Table handling",
+            "labels": [
+                "Read line by line",
+                "Summary phrase",
+                "Skip"
+            ]
+        },
+        "table_summary_text": {
+            "description": "Table summary phrase"
+        },
+        "quote_mode": {
+            "description": "Block quote handling",
+            "labels": [
+                "Preserve",
+                "Skip"
+            ]
+        },
+        "collapse_whitespace": {
+            "description": "Collapse redundant whitespace"
+        },
+        "max_preprocessed_chars": {
+            "description": "Maximum preprocessing output length"
+        },
+        "emotion_continuity_enabled": {
+            "description": "Enable emotion continuity"
+        },
+        "emotion_continuity_mode": {
+            "description": "Continuity mode",
+            "labels": [
+                "Off",
+                "Conservative inheritance",
+                "Allow transitions",
+                "Fix first segment"
+            ]
+        },
+        "neutral_inherits": {
+            "description": "Neutral segments inherit current emotion"
+        },
+        "max_continuity_segments": {
+            "description": "Maximum continuous segments"
+        },
+        "preview_text": {
+            "description": "Preview text"
+        },
+        "preview_emotion": {
+            "description": "Preview emotion",
+            "labels": [
+                "Neutral",
+                "Happy",
+                "Sad",
+                "Angry",
+                "Fearful",
+                "Disgusted",
+                "Surprised",
+                "Calm"
+            ]
+        },
+        "preview_translate": {
+            "description": "Translate before preview"
+        },
+        "preview_tts_provider_id": {
+            "description": "Preview TTS provider"
+        },
+        "diagnostic_log_level": {
+            "description": "Diagnostic log detail",
+            "hint": "Never logs message text, translations, endpoints, proxy addresses, or credentials.",
+            "labels": [
+                "Warnings only",
+                "Normal call outcomes",
+                "Verbose phases"
+            ]
+        },
+        "diagnostic_event_buffer_size": {
+            "description": "Recent safe diagnostic events",
+            "hint": "Kept only in memory and cleared on plugin reload."
+        },
+        "slow_phase_warning_seconds": {
+            "description": "Slow phase warning threshold (seconds)"
+        }
     },
-    "tts_provider_id": {
-      "description": "Translated-speech TTS provider",
-      "hint": "Leave empty to use the selection mode; invalid explicit IDs preserve the upstream path."
-    },
-    "tts_selection_mode": {
-      "description": "TTS selection mode",
-      "labels": ["Prefer Fish Audio", "Follow upstream"]
-    },
-    "fish_model": {
-      "description": "Fish Audio model",
-      "hint": "Sent explicitly on every Fish request; no paid-model fallback.",
-      "labels": ["S2.1 Pro Free", "S2.1 Pro", "S2 Pro", "S1"]
-    },
-    "translation_provider_id": {
-      "description": "Translation LLM provider",
-      "hint": "Used only for translation; it does not replace the chat provider. Leave empty to use the current session provider."
-    },
-    "target_language": {
-      "description": "Target language",
-      "labels": ["Japanese", "English", "Korean", "Simplified Chinese", "Traditional Chinese", "French", "German", "Spanish", "Custom"]
-    },
-    "custom_target_language": {
-      "description": "Custom target language name",
-      "hint": "Required only when Target language is set to Custom."
-    },
-    "translation_timeout_seconds": {
-      "description": "Total translation timeout (seconds)",
-      "hint": "Includes time waiting for a concurrency slot. Remote LLM responses commonly need 60–120 seconds; valid range is 1–300 seconds."
-    },
-    "max_input_chars": {
-      "description": "Maximum source characters",
-      "hint": "Longer input skips translation and uses the complete original text for TTS."
-    },
-    "max_output_chars": {
-      "description": "Maximum translation characters",
-      "hint": "Longer model output is rejected and falls back to original-text TTS."
-    },
-    "max_concurrent_translations": {
-      "description": "Maximum concurrent translations",
-      "hint": "Limits simultaneous translation requests for this plugin instance."
-    },
-    "enable_proactive_compat": {
-      "description": "Enable proactive-chat compatibility",
-      "hint": "Enables translation for the TTS path in astrbot_plugin_proactive_chat v1.2.5."
-    },
-    "custom_prompts_enabled":{"description":"Enable custom prompts"},
-    "translation_prompt_mode":{"description":"Translation prompt mode","labels":["Use built-in","Append to built-in","Replace built-in"]},
-    "translation_prompt_text":{"description":"Custom translation prompt","hint":"{target_language}: resolved target language; {emotion_options}: allowed basic emotions; {fish_cues}: Fish cue allowlist (empty outside Fish mode). Write {{ or }} for a literal brace. Unknown placeholders are rejected."},
-    "emotion_prompt_mode":{"description":"Emotion prompt mode","labels":["Use built-in","Append to built-in","Replace built-in"]},
-    "emotion_prompt_text":{"description":"Custom emotion prompt","hint":"{target_language}: resolved target language; {emotion_options}: allowed basic emotions; {fish_cues}: Fish cue allowlist (empty outside Fish mode). Write {{ or }} for a literal brace. Unknown placeholders are rejected."},
-    "auto_cleanup_tts_files":{"description":"Automatically clean registered TTS files"},
-    "tts_file_retention_days":{"description":"File retention days","hint":"1–365 days; default 30."},
-    "cleanup_check_period":{"description":"Cleanup check period","labels":["At startup","Every 12 hours","Daily","Weekly"]},
-    "preprocessing_enabled":{"description":"Enable text preprocessing"},
-    "code_block_mode":{"description":"Code block handling","labels":["Preserve","Skip","Replace with phrase"]},
-    "code_block_replacement":{"description":"Code block replacement phrase"},
-    "markdown_decoration_mode":{"description":"Markdown decoration","labels":["Preserve","Remove"]},
-    "url_mode":{"description":"URL handling","labels":["Read full URL","Read domain","Replace with phrase","Skip"]},
-    "url_replacement":{"description":"URL replacement phrase"},
-    "emoji_mode":{"description":"Emoji handling","labels":["Preserve","Convert to name","Skip"]},
-    "table_mode":{"description":"Table handling","labels":["Read line by line","Summary phrase","Skip"]},
-    "table_summary_text":{"description":"Table summary phrase"},
-    "quote_mode":{"description":"Block quote handling","labels":["Preserve","Skip"]},
-    "collapse_whitespace":{"description":"Collapse redundant whitespace"},
-    "max_preprocessed_chars":{"description":"Maximum preprocessing output length"},
-    "emotion_continuity_enabled":{"description":"Enable emotion continuity"},
-    "emotion_continuity_mode":{"description":"Continuity mode","labels":["Off","Conservative inheritance","Allow transitions","Fix first segment"]},
-    "neutral_inherits":{"description":"Neutral segments inherit current emotion"},
-    "max_continuity_segments":{"description":"Maximum continuous segments"},
-    "preview_text":{"description":"Preview text"},
-    "preview_emotion":{"description":"Preview emotion","labels":["Neutral","Happy","Sad","Angry","Fearful","Disgusted","Surprised","Calm"]},
-    "preview_translate":{"description":"Translate before preview"},
-    "preview_tts_provider_id":{"description":"Preview TTS provider"}
-  },
-  "pages":{"control":{"title":"Translate TTS Control","description":"Prompt reset, preprocessing preview, confirmed TTS preview, and safe cleanup.","intro":"Save ordinary settings on the plugin configuration page. AstrBot reload creates a new immutable call snapshot.","prompts_title":"Prompts","prompts_desc":"Reset either prompt without changing an in-flight call.","translation_guide":"Translation prompt placeholders: {target_language} is the resolved target language; {emotion_options} is the allowed basic-emotion list; {fish_cues} is the Fish cue allowlist and is empty outside Fish mode. Use {{ and }} for literal braces.","emotion_guide":"Emotion prompt placeholders: {target_language}, {emotion_options}, and {fish_cues}. Unknown placeholders are rejected; use {{ and }} for literal braces.","reset_translation":"Reset translation prompt","reset_emotion":"Reset emotion prompt","preprocess_title":"Preprocessing preview","test_text":"Test text","preprocess":"Preview preprocessing","result":"Result","preview_title":"TTS preview","preview_text":"Preview text (empty uses a safe sample)","emotion":"Emotion","provider":"TTS provider","translate_first":"Translate first","preview_plan":"Build preview plan","preview_generate":"Confirm possible quota cost and generate","preview_cancel":"Cancel preview","download":"Download preview","cleanup_title":"File cleanup","cleanup_plan":"Clean expired files now","cleanup_confirm":"Confirm deletion of registered expired files","provider_auto":"Automatic / configured default","unnamed":"unnamed","provider_type":"Provider type","instance_id":"Instance ID","model":"Model","voice":"Voice","target_language":"Target language","emotion_protocol":"Emotion protocol","may_consume_quota":"May consume quota","may_cost":"May incur charges","yes":"Yes","no":"No","cleanup_unavailable":"Cleanup status unavailable.","last_cleanup":"Last cleanup","never":"Never","next_check":"Next check","deleted_files":"Deleted files","released_bytes":"Released bytes","error_types":"Error types","none":"None","preview_warning":"Real synthesis may consume provider quota.","preview_generated":"Preview generated","cleanup_warning":"Registered expired files will be deleted.","emotion_neutral":"Neutral","emotion_happy":"Happy","emotion_sad":"Sad","emotion_angry":"Angry","emotion_fearful":"Fearful","emotion_disgusted":"Disgusted","emotion_surprised":"Surprised","emotion_calm":"Calm"}}
+    "pages": {
+        "control": {
+            "title": "Translate TTS Control",
+            "description": "Prompt reset, preprocessing preview, confirmed TTS preview, and safe cleanup.",
+            "intro": "Save ordinary settings on the plugin configuration page. AstrBot reload creates a new immutable call snapshot.",
+            "prompts_title": "Prompts",
+            "prompts_desc": "Reset either prompt without changing an in-flight call.",
+            "translation_guide": "Translation prompt placeholders: {target_language} is the resolved target language; {emotion_options} is the allowed basic-emotion list; {fish_cues} is the Fish cue allowlist and is empty outside Fish mode. Use {{ and }} for literal braces.",
+            "emotion_guide": "Emotion prompt placeholders: {target_language}, {emotion_options}, and {fish_cues}. Unknown placeholders are rejected; use {{ and }} for literal braces.",
+            "reset_translation": "Reset translation prompt",
+            "reset_emotion": "Reset emotion prompt",
+            "preprocess_title": "Preprocessing preview",
+            "test_text": "Test text",
+            "preprocess": "Preview preprocessing",
+            "result": "Result",
+            "preview_title": "TTS preview",
+            "preview_text": "Preview text (empty uses a safe sample)",
+            "emotion": "Emotion",
+            "provider": "TTS provider",
+            "translate_first": "Translate first",
+            "preview_plan": "Build preview plan",
+            "preview_generate": "Confirm possible quota cost and generate",
+            "preview_cancel": "Cancel preview",
+            "download": "Download preview",
+            "diagnostics_title": "Diagnostics",
+            "diagnostics_desc": "Privacy-safe phase timings, timeout ownership, provider class, proxy source presence, and recent outcomes. Message content and addresses are excluded.",
+            "diagnostics_refresh": "Refresh diagnostics",
+            "diagnostics_empty": "No diagnostic events yet.",
+            "cleanup_title": "File cleanup",
+            "cleanup_plan": "Clean expired files now",
+            "cleanup_confirm": "Confirm deletion of registered expired files",
+            "provider_auto": "Automatic / configured default",
+            "unnamed": "unnamed",
+            "provider_type": "Provider type",
+            "instance_id": "Instance ID",
+            "model": "Model",
+            "voice": "Voice",
+            "target_language": "Target language",
+            "emotion_protocol": "Emotion protocol",
+            "may_consume_quota": "May consume quota",
+            "may_cost": "May incur charges",
+            "yes": "Yes",
+            "no": "No",
+            "cleanup_unavailable": "Cleanup status unavailable.",
+            "last_cleanup": "Last cleanup",
+            "never": "Never",
+            "next_check": "Next check",
+            "deleted_files": "Deleted files",
+            "released_bytes": "Released bytes",
+            "error_types": "Error types",
+            "none": "None",
+            "preview_warning": "Real synthesis may consume provider quota.",
+            "preview_generated": "Preview generated",
+            "cleanup_warning": "Registered expired files will be deleted.",
+            "emotion_neutral": "Neutral",
+            "emotion_happy": "Happy",
+            "emotion_sad": "Sad",
+            "emotion_angry": "Angry",
+            "emotion_fearful": "Fearful",
+            "emotion_disgusted": "Disgusted",
+            "emotion_surprised": "Surprised",
+            "emotion_calm": "Calm"
+        }
+    }
 }

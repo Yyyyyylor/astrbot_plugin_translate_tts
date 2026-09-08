@@ -5,9 +5,11 @@ from __future__ import annotations
 import asyncio
 import inspect
 import logging
+import time
 from collections.abc import Callable
 from typing import Any
 
+from .diagnostics import exception_type_chain
 from .emotion import TranslationResult
 from .preprocess import preprocess_text
 from .scope import TranslationScope, current_translation_scope
@@ -48,6 +50,24 @@ class TranslatedTTSProviderProxy:
         if callable(register):
             await register(audio)
 
+    def _emit(self, event: str, **fields: Any) -> None:
+        diagnostics = getattr(self._service, "diagnostics", None)
+        if diagnostics is not None:
+            diagnostics.emit(
+                event,
+                trace_id=self._scope.trace_id,
+                source=self._scope.source,
+                **fields,
+            )
+
+    @staticmethod
+    def _audio_kind(audio: Any) -> str:
+        if not audio:
+            return "empty"
+        if isinstance(audio, str):
+            return "url" if audio.startswith(("http://", "https://")) else "local_path"
+        return type(audio).__name__
+
     async def get_audio(self, *args: Any, **kwargs: Any) -> Any:
         original = self._provider.get_audio
         if not self._scope_matches():
@@ -63,6 +83,8 @@ class TranslatedTTSProviderProxy:
             return await original(*args, **kwargs)
 
         entry = self._scope.begin_conversion(source_text)
+        conversion = len(self._scope.conversions)
+        started = time.monotonic()
         settings = self._scope.settings
         context = getattr(
             self._service,
@@ -76,6 +98,14 @@ class TranslatedTTSProviderProxy:
             settings.fish_model if resolution.kind == "fishaudio_tts_api" else ""
         )
         entry.diagnostic = resolution.reason
+        self._emit(
+            "tts_conversion_started",
+            detail=True,
+            conversion=conversion,
+            input_chars=len(source_text),
+            provider_type=resolution.kind or "unknown",
+            provider_action=("translate" if resolution.translate else "passthrough"),
+        )
         if resolution.reason:
             logger.info(
                 "Translate TTS provider selection degraded: reason=%s type=%s source=%s",
@@ -87,12 +117,26 @@ class TranslatedTTSProviderProxy:
             audio = await original(*bound.args, **bound.kwargs)
             await self._register_audio(audio)
             entry.audio_result = audio
+            self._emit(
+                "tts_conversion_completed",
+                conversion=conversion,
+                translated=False,
+                attempts=1,
+                audio_kind=self._audio_kind(audio),
+                elapsed_ms=round((time.monotonic() - started) * 1000),
+            )
             return audio
 
         processed_text = preprocess_text(source_text, settings)
         entry.preprocessed_text = processed_text
         if not processed_text:
             entry.diagnostic = "preprocessed_empty"
+            self._emit(
+                "tts_conversion_skipped",
+                severity="warning",
+                conversion=conversion,
+                reason="preprocessed_empty",
+            )
             return None
         if self._scope.skip_translation:
             translated = TranslationResult(
@@ -120,12 +164,19 @@ class TranslatedTTSProviderProxy:
         entry.emotion = translated.emotion
         try:
             prepared = prepare_call(resolution, translated, settings)
-        except (AttributeError, TypeError):
+        except (AttributeError, TypeError) as exc:
             entry.diagnostic = "unsafe_provider_copy"
             logger.warning(
                 "Translate TTS request-local provider copy unavailable: type=%s source=%s",
                 resolution.kind or "unknown",
                 self._scope.source,
+            )
+            self._emit(
+                "tts_conversion_failed",
+                severity="warning",
+                conversion=conversion,
+                reason="unsafe_provider_copy",
+                exception_types=exception_type_chain(exc),
             )
             raise
         entry.controlled_text = prepared.text
@@ -140,13 +191,34 @@ class TranslatedTTSProviderProxy:
             )
         selected_original = prepared.provider.get_audio
         bound.arguments["text"] = prepared.text
+        attempts = 1
         try:
             audio = await selected_original(*bound.args, **bound.kwargs)
         except asyncio.CancelledError:
+            self._emit(
+                "tts_conversion_cancelled",
+                conversion=conversion,
+                elapsed_ms=round((time.monotonic() - started) * 1000),
+            )
             raise
-        except Exception:
+        except Exception as exc:
             if not translated.success:
+                self._emit(
+                    "tts_conversion_failed",
+                    severity="warning",
+                    conversion=conversion,
+                    reason="original_tts_error",
+                    attempts=1,
+                    exception_types=exception_type_chain(exc),
+                )
                 raise
+            self._emit(
+                "tts_retry_original",
+                severity="warning",
+                conversion=conversion,
+                reason="translated_tts_error",
+                exception_types=exception_type_chain(exc),
+            )
             fallback = prepare_call(
                 resolution,
                 TranslationResult(source_text, source_text, "neutral", False),
@@ -154,9 +226,29 @@ class TranslatedTTSProviderProxy:
                 dynamic_emotion=False,
             )
             bound.arguments["text"] = fallback.text
-            audio = await fallback.provider.get_audio(*bound.args, **bound.kwargs)
+            attempts = 2
+            try:
+                audio = await fallback.provider.get_audio(*bound.args, **bound.kwargs)
+            except asyncio.CancelledError:
+                raise
+            except Exception as fallback_exc:
+                self._emit(
+                    "tts_conversion_failed",
+                    severity="warning",
+                    conversion=conversion,
+                    reason="original_retry_error",
+                    attempts=2,
+                    exception_types=exception_type_chain(fallback_exc),
+                )
+                raise
         else:
             if not audio and translated.success:
+                self._emit(
+                    "tts_retry_original",
+                    severity="warning",
+                    conversion=conversion,
+                    reason="translated_tts_empty",
+                )
                 fallback = prepare_call(
                     resolution,
                     TranslationResult(source_text, source_text, "neutral", False),
@@ -164,7 +256,39 @@ class TranslatedTTSProviderProxy:
                     dynamic_emotion=False,
                 )
                 bound.arguments["text"] = fallback.text
-                audio = await fallback.provider.get_audio(*bound.args, **bound.kwargs)
+                attempts = 2
+                try:
+                    audio = await fallback.provider.get_audio(
+                        *bound.args, **bound.kwargs
+                    )
+                except asyncio.CancelledError:
+                    raise
+                except Exception as fallback_exc:
+                    self._emit(
+                        "tts_conversion_failed",
+                        severity="warning",
+                        conversion=conversion,
+                        reason="original_retry_error",
+                        attempts=2,
+                        exception_types=exception_type_chain(fallback_exc),
+                    )
+                    raise
         entry.audio_result = audio
         await self._register_audio(audio)
+        elapsed_ms = round((time.monotonic() - started) * 1000)
+        self._emit(
+            "tts_conversion_completed",
+            severity=(
+                "warning"
+                if elapsed_ms >= settings.slow_phase_warning_seconds * 1000
+                else "info"
+            ),
+            conversion=conversion,
+            translated=translated.success,
+            attempts=attempts,
+            provider_type=resolution.kind or "unknown",
+            adapter=entry.adapter,
+            audio_kind=self._audio_kind(audio),
+            elapsed_ms=elapsed_ms,
+        )
         return audio

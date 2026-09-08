@@ -50,9 +50,17 @@
     },
     "translation_timeout_seconds": {
         "type": "int",
-        "description": "Total translation timeout in seconds (including concurrency wait)",
-        "hint": "Remote LLM responses commonly need 60–120 seconds; valid range is 1–300 seconds.",
-        "default": 60
+        "description": "Translation LLM call timeout in seconds",
+        "hint": "Applies after a concurrency slot is acquired. Provider HTTP/SDK timeouts remain independently configured on the selected LLM provider.",
+        "default": 60,
+        "slider": {"min":1,"max":300,"step":1}
+    },
+    "translation_queue_timeout_seconds": {
+        "type": "int",
+        "description": "Maximum wait for a translation concurrency slot",
+        "hint": "Keeps a busy translation queue from delaying QQ replies indefinitely; range is 1–60 seconds.",
+        "default": 10,
+        "slider": {"min":1,"max":60,"step":1}
     },
     "max_input_chars": {
         "type": "int",
@@ -101,5 +109,8 @@
     "preview_text": {"type":"text","description":"TTS preview text (empty uses a safe sample)","default":""},
     "preview_emotion": {"type":"string","description":"TTS preview emotion","default":"neutral","options":["neutral","happy","sad","angry","fearful","disgusted","surprised","calm"]},
     "preview_translate": {"type":"bool","description":"Translate before TTS preview","default":true},
-    "preview_tts_provider_id": {"type":"string","description":"TTS provider used by preview","default":"","_special":"select_provider_tts"}
+    "preview_tts_provider_id": {"type":"string","description":"TTS provider used by preview","default":"","_special":"select_provider_tts"},
+    "diagnostic_log_level": {"type":"string","description":"Diagnostic log detail","hint":"Minimal logs warnings only; normal adds call outcomes; verbose adds phase events. Message text, translations, endpoints, proxy addresses, and credentials are never logged.","default":"normal","options":["minimal","normal","verbose"]},
+    "diagnostic_event_buffer_size": {"type":"int","description":"Recent safe diagnostic events kept in memory","hint":"Visible only to administrators through the Control Page or /tts_diagnostics; cleared on reload.","default":100,"slider":{"min":20,"max":500,"step":10}},
+    "slow_phase_warning_seconds": {"type":"int","description":"Warn when translation or TTS exceeds this duration","default":15,"slider":{"min":1,"max":300,"step":1}}
 }

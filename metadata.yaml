@@ -2,7 +2,7 @@ name: astrbot_plugin_translate_tts
 display_name: Translate TTS
 short_desc: Translate text only when an existing TTS path synthesizes speech.
 desc: Keep the original response text and synthesize a configurable target-language translation through the existing TTS provider.
-version: 1.2.1
+version: 1.2.2
 author: Cheney
 repo: https://github.com/Yyyyyylor/astrbot_plugin_translate_tts
 astrbot_version: ">=4.27.5,<4.28"

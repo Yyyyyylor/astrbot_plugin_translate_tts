@@ -11,6 +11,7 @@ from types import SimpleNamespace
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from translate_tts.config import ConfigurationError, TranslationSettings
+from translate_tts.diagnostics import DiagnosticRecorder
 from translate_tts.scope import TranslationScope
 from translate_tts.translation import TranslationService
 
@@ -36,6 +37,17 @@ class FakeContext:
         if isinstance(self.response, BaseException):
             raise self.response
         return self.response
+
+
+class NullLogger:
+    def info(self, *args):
+        pass
+
+    def warning(self, *args):
+        pass
+
+    def error(self, *args):
+        pass
 
 
 def make_scope(**overrides) -> TranslationScope:
@@ -182,7 +194,7 @@ class TranslationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.text, "abcdef")
         self.assertEqual(context.generate_calls, [])
 
-    async def test_timeout_includes_waiting_for_concurrency_slot(self):
+    async def test_queue_timeout_is_separate_from_llm_timeout(self):
         context = FakeContext()
         entered = asyncio.Event()
         release = asyncio.Event()
@@ -193,16 +205,89 @@ class TranslationTests(unittest.IsolatedAsyncioTestCase):
             return SimpleNamespace(role="assistant", completion_text="translated")
 
         context.generate_hook = blocked_response
-        service = TranslationService(context, max_concurrency=1)
+        diagnostics = DiagnosticRecorder(NullLogger(), level="normal")
+        service = TranslationService(
+            context, max_concurrency=1, diagnostics=diagnostics
+        )
         long_scope = make_scope(translation_timeout_seconds=2)
-        waiting_scope = make_scope(translation_timeout_seconds=1)
+        waiting_scope = make_scope(
+            translation_timeout_seconds=2,
+            translation_queue_timeout_seconds=1,
+        )
         first = asyncio.create_task(service.translate_for_tts("first", long_scope))
         await entered.wait()
         result = await service.translate_for_tts("second", waiting_scope)
         self.assertEqual(result.text, "second")
         self.assertEqual(len(context.generate_calls), 1)
+        self.assertEqual(
+            diagnostics.snapshot()["recent_events"][-1]["reason"],
+            "queue_timeout",
+        )
         release.set()
         self.assertEqual((await first).text, "translated")
+
+    async def test_nested_provider_timeout_is_not_reported_as_plugin_deadline(self):
+        context = FakeContext(TimeoutError("provider internal timeout"))
+        diagnostics = DiagnosticRecorder(NullLogger(), level="normal")
+        result = await TranslationService(
+            context, diagnostics=diagnostics
+        ).translate_for_tts("source", make_scope())
+        self.assertEqual(result.text, "source")
+        fallback = diagnostics.snapshot()["recent_events"][-1]
+        self.assertEqual(fallback["reason"], "provider_timeout")
+        self.assertEqual(fallback["phase"], "llm_request")
+        self.assertNotIn("provider internal timeout", str(fallback))
+
+    async def test_plugin_deadline_is_distinct_from_provider_timeout(self):
+        context = FakeContext()
+
+        async def too_slow():
+            await asyncio.sleep(2)
+
+        context.generate_hook = too_slow
+        diagnostics = DiagnosticRecorder(NullLogger(), level="normal")
+        result = await TranslationService(
+            context, diagnostics=diagnostics
+        ).translate_for_tts(
+            "source",
+            make_scope(translation_timeout_seconds=1),
+        )
+        self.assertEqual(result.text, "source")
+        fallback = diagnostics.snapshot()["recent_events"][-1]
+        self.assertEqual(fallback["reason"], "plugin_deadline")
+        self.assertEqual(fallback["phase"], "llm_request")
+
+    async def test_provider_diagnostics_expose_timeout_and_proxy_mode_not_values(self):
+        class ProviderInfoContext(FakeContext):
+            def get_provider_by_id(self, provider_id):
+                self.inspected_provider_id = provider_id
+                return SimpleNamespace(
+                    provider_config={
+                        "timeout": 17,
+                        "proxy": "http://user:secret@proxy.invalid:7890",
+                        "api_key": "do-not-log",
+                    }
+                )
+
+        context = ProviderInfoContext()
+        diagnostics = DiagnosticRecorder(NullLogger(), level="normal")
+        result = await TranslationService(
+            context, diagnostics=diagnostics
+        ).translate_for_tts(
+            "source",
+            make_scope(translation_provider_id="private-provider-id"),
+        )
+        self.assertTrue(result.success)
+        provider_event = next(
+            item
+            for item in diagnostics.snapshot()["recent_events"]
+            if item["event"] == "translation_provider_resolved"
+        )
+        self.assertEqual(provider_event["provider_timeout_seconds"], 17)
+        self.assertEqual(provider_event["proxy_mode"], "provider_config")
+        self.assertNotIn("private-provider-id", str(provider_event))
+        self.assertNotIn("proxy.invalid", str(provider_event))
+        self.assertNotIn("do-not-log", str(provider_event))
 
     async def test_concurrency_never_exceeds_limit(self):
         context = FakeContext()

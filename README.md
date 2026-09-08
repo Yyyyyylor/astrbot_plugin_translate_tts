@@ -67,11 +67,15 @@ Cleanup is off by default and retains files for 30 days when enabled. Only real 
 | `translation_provider_id` | empty | WebUI LLM selector. Empty resolves the current session provider; an explicitly selected unavailable provider falls back to original-text TTS. |
 | `target_language` | `ja` | `ja`, `en`, `ko`, `zh-CN`, `zh-TW`, `fr`, `de`, `es`, or `custom`. |
 | `custom_target_language` | empty | Required non-empty language name when the target is `custom`. |
-| `translation_timeout_seconds` | `60` | Total timeout including concurrency wait; range 1–300 seconds. Remote LLMs commonly need 60–120 seconds. |
+| `translation_timeout_seconds` | `60` | LLM-call deadline after a concurrency slot is acquired; range 1–300 seconds. It does not override the selected provider's HTTP/SDK timeout. |
+| `translation_queue_timeout_seconds` | `10` | Maximum wait for a plugin translation slot; range 1–60 seconds. |
 | `max_input_chars` | `4000` | Range 1–100000. Longer input bypasses translation without truncation. |
 | `max_output_chars` | `12000` | Range 1–200000. Longer model output is rejected. |
 | `max_concurrent_translations` | `2` | Range 1–100, scoped to this plugin instance. |
 | `enable_proactive_compat` | `true` | Enables the v1.2.5 proactive-chat runtime adapter. |
+| `diagnostic_log_level` | `normal` | `minimal`, `normal`, or `verbose`; never includes message text, translations, endpoint/proxy addresses, or credentials. |
+| `diagnostic_event_buffer_size` | `100` | Keeps 20–500 safe events in memory for administrators; cleared on reload. |
+| `slow_phase_warning_seconds` | `15` | Emits a warning when translation or TTS exceeds this duration. |
 
 Example generated AstrBot configuration (edit through WebUI when possible):
 
@@ -86,6 +90,7 @@ Example generated AstrBot configuration (edit through WebUI when possible):
   "target_language": "ja",
   "custom_target_language": "",
   "translation_timeout_seconds": 60,
+  "translation_queue_timeout_seconds": 10,
   "max_input_chars": 4000,
   "max_output_chars": 12000,
   "max_concurrent_translations": 2,
@@ -123,13 +128,19 @@ Outside supported versions, the affected adapter fails closed and logs `incompat
 Search logs for `Translate TTS normal compatibility` and `Translate TTS proactive compatibility`. The healthy runtime state is `signature_compatible_unverified`: required signatures matched, but this does not prove a source commit or successful QQ delivery.
 
 - **No translated audio or translation request:** confirm upstream TTS actually triggered, the result is non-streaming, this plugin is enabled for the session, and a TTS provider is selected.
-- **Original-language audio with a `timeout` fallback:** raise `translation_timeout_seconds` to 60–120 seconds and reload the plugin. The timeout includes concurrency waiting and the LLM response. Also verify that the selected translation provider is available.
+- **`reason=queue_timeout`:** the plugin could not acquire one of its translation slots. Increase `translation_queue_timeout_seconds` or `max_concurrent_translations` cautiously.
+- **`reason=plugin_deadline`:** the plugin's LLM-call deadline expired. Increase `translation_timeout_seconds` or select a faster dedicated translation provider.
+- **`reason=provider_timeout`:** the selected LLM provider's HTTP/SDK timeout expired. Change that provider's own timeout/proxy settings; increasing only the plugin timeout cannot fix it.
+- **Docker proxy:** the selected translation provider must be able to reach its proxy from inside the container. A host proxy at `127.0.0.1` is not the container host; use a container-reachable hostname/address and verify the provider from AstrBot WebUI.
+- **QQ Official `APIReturnNoneError`:** this is raised by AstrBot's QQ adapter after the botpy request returns `None`; it is separate from translation. Repeated failures followed by `Websocket session starting` indicate QQ connection instability. Check container egress/global proxy and QQ credentials, then test a plain non-TTS reply with this plugin disabled.
 - **Translated synthesis retries original:** the voice may not support the target language or returned no audio.
 - **No visible original text:** confirm the adapter is not `incompatible`. For proactive chat, metadata must report exactly `1.2.5`.
 - **Proactive is `not_installed`:** load/enable proactive-chat and reload this plugin if needed.
 - **Repeated speech after reload:** unload both plugins once, load proactive-chat first, then this plugin; retain `superseded`/signature logs for diagnosis.
 
-The plugin intentionally logs source category, fallback reason, error type, and compatibility state without source text, translation, or credentials. AstrBot and providers may log separately.
+Use the administrator-only `/tts_diagnostics` command or the Control Page diagnostics card to view the active immutable timeout values, hashed provider reference, provider class, provider-internal timeout, proxy source presence, phase timings, and recent outcomes. `diagnostic_log_level=verbose` emits all safe phase events to AstrBot logs. The event buffer is bounded, in-memory only, and cleared on reload.
+
+The plugin never logs source text, translated text, prompts, response content, endpoints, proxy addresses, tokens, or credentials. Exception messages are excluded; only exception class chains are recorded. AstrBot and providers may log separately.
 
 ## Privacy and security
 

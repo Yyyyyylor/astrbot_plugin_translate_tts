@@ -30,6 +30,7 @@ EMOJI_MODES = {"preserve", "name", "skip"}
 TABLE_MODES = {"lines", "summary", "skip"}
 QUOTE_MODES = {"preserve", "skip"}
 CONTINUITY_MODES = {"off", "conservative", "allow_transition", "fixed_first"}
+DIAGNOSTIC_LOG_LEVELS = {"minimal", "normal", "verbose"}
 
 
 class ConfigurationError(ValueError):
@@ -64,6 +65,7 @@ class TranslationSettings:
     target_language: str = "ja"
     custom_target_language: str = ""
     translation_timeout_seconds: int = 60
+    translation_queue_timeout_seconds: int = 10
     max_input_chars: int = 4000
     max_output_chars: int = 12000
     max_concurrent_translations: int = 2
@@ -96,6 +98,9 @@ class TranslationSettings:
     preview_emotion: str = "neutral"
     preview_translate: bool = True
     preview_tts_provider_id: str = ""
+    diagnostic_log_level: str = "normal"
+    diagnostic_event_buffer_size: int = 100
+    slow_phase_warning_seconds: int = 15
 
     @classmethod
     def from_mapping(cls, config: Mapping[str, Any]) -> TranslationSettings:
@@ -118,6 +123,9 @@ class TranslationSettings:
             ).strip(),
             translation_timeout_seconds=_bounded_int(
                 config, "translation_timeout_seconds", 60, 1, 300
+            ),
+            translation_queue_timeout_seconds=_bounded_int(
+                config, "translation_queue_timeout_seconds", 10, 1, 60
             ),
             max_input_chars=_bounded_int(config, "max_input_chars", 4000, 1, 100_000),
             max_output_chars=_bounded_int(
@@ -185,6 +193,15 @@ class TranslationSettings:
             preview_tts_provider_id=str(
                 config.get("preview_tts_provider_id", "") or ""
             ).strip(),
+            diagnostic_log_level=str(
+                config.get("diagnostic_log_level", "normal") or "normal"
+            ).strip(),
+            diagnostic_event_buffer_size=_bounded_int(
+                config, "diagnostic_event_buffer_size", 100, 20, 500
+            ),
+            slow_phase_warning_seconds=_bounded_int(
+                config, "slow_phase_warning_seconds", 15, 1, 300
+            ),
         )
         if settings.tts_selection_mode not in TTS_SELECTION_MODES:
             raise ConfigurationError(
@@ -210,6 +227,11 @@ class TranslationSettings:
                 "emotion_continuity_mode",
                 settings.emotion_continuity_mode,
                 CONTINUITY_MODES,
+            ),
+            (
+                "diagnostic_log_level",
+                settings.diagnostic_log_level,
+                DIAGNOSTIC_LOG_LEVELS,
             ),
         )
         for key, value, allowed in enum_fields:

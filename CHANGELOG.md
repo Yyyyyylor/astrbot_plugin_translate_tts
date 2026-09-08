@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.2] - 2026-09-08
+
+### Added
+
+- Privacy-safe structured diagnostics with ephemeral trace IDs, phase timings, hashed provider references, provider timeout/proxy-source metadata, a bounded in-memory event buffer, an administrator command, and a bilingual Control Page status card.
+- Separate WebUI-configurable translation queue timeout so concurrency waiting no longer consumes the LLM call deadline.
+
+### Fixed
+
+- Distinguish plugin deadline expiry from nested LLM provider HTTP/SDK timeouts; increasing the plugin timeout no longer hides the actual timeout owner in logs.
+
+### Documentation
+
+- Documented Docker proxy reachability and separated AstrBot QQ Official `APIReturnNoneError`/WebSocket recovery from plugin translation failures.
+
 ## [Unreleased]
 
 ## [1.2.1] - 2026-09-07

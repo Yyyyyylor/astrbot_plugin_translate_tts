@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+import secrets
+import time
 from contextvars import ContextVar
 from dataclasses import dataclass, field
 from typing import Any, Literal
@@ -25,6 +27,7 @@ class ConversionEntry:
     adapter: str = "plain"
     diagnostic: str = ""
     audio_result: Any = None
+    started_monotonic: float = field(default_factory=time.monotonic)
 
     @property
     def produced_audio(self) -> bool:
@@ -52,6 +55,10 @@ class TranslationScope:
     continuity_segment_count: int = 0
     skip_translation: bool = False
     preview_emotion: str | None = None
+    trace_id: str = field(default_factory=lambda: secrets.token_hex(4))
+    started_monotonic: float = field(default_factory=time.monotonic)
+    diagnostic_phase: str = "scope_created"
+    translation_provider_ref: str = "none"
 
     def snapshot_before_tts(self, *, plain_type: type, record_type: type) -> None:
         """Capture component identities at the getter call immediately before TTS."""

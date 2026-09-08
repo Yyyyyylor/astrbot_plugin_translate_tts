@@ -50,6 +50,9 @@ class ConfigAndPromptTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(settings.auto_cleanup_tts_files)
         self.assertEqual(settings.tts_file_retention_days, 30)
         self.assertEqual(settings.fish_model, "s2.1-pro-free")
+        self.assertEqual(settings.translation_queue_timeout_seconds, 10)
+        self.assertEqual(settings.diagnostic_log_level, "normal")
+        self.assertEqual(settings.diagnostic_event_buffer_size, 100)
 
     def test_unknown_placeholder_and_empty_replacement_are_errors(self):
         with self.assertRaisesRegex(ConfigurationError, "unknown prompt placeholder"):

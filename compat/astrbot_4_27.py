@@ -5,9 +5,11 @@ from __future__ import annotations
 import asyncio
 import functools
 import inspect
+import time
 from collections.abc import AsyncGenerator, Callable
 from typing import Any
 
+from ..diagnostics import exception_type_chain
 from ..scope import TranslationScope, current_translation_scope
 from ..translation import TranslationService
 from ..tts_proxy import TranslatedTTSProviderProxy
@@ -182,6 +184,14 @@ class NormalPipelineAdapter:
                 event=event,
                 owner_task=asyncio.current_task(),
             )
+            diagnostics = getattr(adapter.plugin, "diagnostics", None)
+            if diagnostics is not None:
+                diagnostics.emit(
+                    "scope_started",
+                    detail=True,
+                    trace_id=scope.trace_id,
+                    source=scope.source,
+                )
             generator = original(stage, event)
             completed = False
             try:
@@ -195,7 +205,43 @@ class NormalPipelineAdapter:
                     finally:
                         current_translation_scope.reset(token)
                     yield item
+            except asyncio.CancelledError:
+                if diagnostics is not None:
+                    diagnostics.emit(
+                        "scope_cancelled",
+                        trace_id=scope.trace_id,
+                        source=scope.source,
+                        elapsed_ms=round(
+                            (time.monotonic() - scope.started_monotonic) * 1000
+                        ),
+                    )
+                raise
+            except Exception as exc:
+                if diagnostics is not None:
+                    diagnostics.emit(
+                        "scope_failed",
+                        severity="warning",
+                        trace_id=scope.trace_id,
+                        source=scope.source,
+                        exception_types=exception_type_chain(exc),
+                    )
+                raise
             finally:
+                if diagnostics is not None:
+                    diagnostics.emit(
+                        "scope_closed",
+                        detail=True,
+                        trace_id=scope.trace_id,
+                        source=scope.source,
+                        completed=completed,
+                        conversions=len(scope.conversions),
+                        produced_audio=sum(
+                            entry.produced_audio for entry in scope.conversions
+                        ),
+                        elapsed_ms=round(
+                            (time.monotonic() - scope.started_monotonic) * 1000
+                        ),
+                    )
                 scope.deactivate()
                 await generator.aclose()
             if completed:

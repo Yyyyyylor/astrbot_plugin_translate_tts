@@ -81,10 +81,12 @@ The authoritative defaults are in `_conf_schema.json`; the complete operator-fac
 | `fish_model` | `s2.1-pro-free`, `s2.1-pro`, `s2-pro`, or `s1` | Applied only to Fish call copies and sent in the real header. No automatic paid fallback. |
 | `translation_provider_id` | Provider ID string or empty | Empty asks AstrBot to resolve the current session provider. A non-empty unavailable ID falls back to original-text TTS without silently selecting another model. |
 | `target_language`, `custom_target_language` | One predefined language code, or `custom` with a non-empty name | Unknown codes and an empty custom name mark configuration invalid. Only one target language is active per plugin configuration. |
-| `translation_timeout_seconds` | Integer 1–120 | Covers both semaphore waiting and the LLM request. |
+| `translation_timeout_seconds` | Integer 1–300 | LLM-call deadline after acquiring a plugin slot; it does not override provider HTTP/SDK timeouts. |
+| `translation_queue_timeout_seconds` | Integer 1–60 | Bounds only the wait for a plugin translation slot. |
 | `max_input_chars` | Integer 1–100000 | Longer source text bypasses translation intact. |
 | `max_output_chars` | Integer 1–200000 | Longer model output is rejected and the complete source is used. |
 | `max_concurrent_translations` | Integer 1–100 | Bounds translation calls for this plugin instance; a change takes effect after reload. |
+| `diagnostic_log_level` | `minimal`, `normal`, or `verbose` | Controls safe AstrBot log detail without enabling content or credential logging. |
 
 ## Read-only source and integration probes
 
@@ -129,7 +131,7 @@ ruff check translate_tts
 ruff format --check translate_tts
 ```
 
-The suite covers configuration, exact history-free LLM request shape, provider selection, output rejection, timeout including semaphore wait, concurrency, cancellation, normal trigger/text restoration, duplicate source text, file-service URLs, synthesis fallback, cross-session isolation, proactive segmentation/text retention, load/reload/unload, incompatible APIs, and patch ownership.
+The suite covers configuration, exact history-free LLM request shape, provider selection, output rejection, separate queue/plugin/provider timeouts, privacy-safe diagnostics, concurrency, cancellation, normal trigger/text restoration, duplicate source text, file-service URLs, synthesis fallback, cross-session isolation, proactive segmentation/text retention, load/reload/unload, incompatible APIs, and patch ownership.
 
 Automated tests do not establish translation quality, spoken-language accuracy, provider permissions, QQ media upload, delivery, or playback.
 
@@ -154,4 +156,6 @@ Until both normal and proactive paths pass this checklist, the plugin is an impl
 
 TTS-selected text is disclosed to the translation LLM provider; the translation or fallback source is disclosed to the TTS provider. The translation request omits conversation history, images, audio, tools, and persona. The plugin does not persist translation content and does not intentionally log source/translated text. AstrBot, proactive-chat, LLM, and TTS logs may behave differently.
 
-Fallback logs use `TTS translation fallback` with timeout, length, provider/generation, empty/refusal/tool output, or excessive-output reasons. Compatibility logs include state and detail. Collect error types and state, but redact credentials and user content before sharing logs.
+Structured events begin with `Translate TTS diagnostic`. Every call has an ephemeral trace ID. Timeout ownership is explicit: `queue_timeout` is the plugin semaphore wait, `plugin_deadline` is the plugin LLM deadline, and `provider_timeout` is a nested timeout raised by the selected provider. Provider IDs are hashed; exception messages and all text/content/address/credential fields are excluded. Administrators can read the bounded in-memory snapshot through `/tts_diagnostics` or the Control Page.
+
+AstrBot 4.27.5 calls the selected provider directly from `Context.llm_generate`; providers retain their own HTTP/SDK timeout and proxy configuration. In Docker, a provider proxy must be reachable inside the container. The QQ Official `APIReturnNoneError` originates in AstrBot's `post_c2c_message` retry wrapper when botpy returns `None`, not in this plugin. AstrBot 4.27.5 retries three times; a following WebSocket restart indicates platform connection recovery. See the [v4.27.5 source](https://github.com/AstrBotDevs/AstrBot/blob/v4.27.5/astrbot/core/platform/sources/qqofficial/qqofficial_message_event.py#L742-L793) and the upstream [retry fix discussion](https://github.com/AstrBotDevs/AstrBot/issues/8977).
