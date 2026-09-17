@@ -35,7 +35,7 @@ The visible message remains the original-language text; the translation is not d
 
 ## Installation
 
-1. Download `astrbot_plugin_translate_tts-v1.2.1.zip` from the [v1.2.1 release](https://github.com/Yyyyyylor/astrbot_plugin_translate_tts/releases/tag/v1.2.1).
+1. Download `astrbot_plugin_translate_tts-1.3.0.zip` from the [v1.3.0 release](https://github.com/Yyyyyylor/astrbot_plugin_translate_tts/releases/tag/v1.3.0).
 2. In AstrBot WebUI, open the plugin manager and install the downloaded ZIP, or extract its root-level files into `AstrBot/data/plugins/astrbot_plugin_translate_tts`.
 3. Do not copy this checkout's local `data`, `temp`, cache, database, or configuration artifacts into production. Documentation and tests are optional for runtime use.
 4. Start AstrBot, or reload the plugin in **WebUI > Plugins**.
@@ -51,7 +51,7 @@ No third-party Python package is required. AstrBot must already have working LLM
 
 The native settings panel now exposes custom translation/emotion prompt modes, every preprocessing rule, cleanup retention and schedule, preview defaults, and reply-scoped emotion continuity. Custom prompts accept only the documented placeholders (`{target_language}`, `{emotion_options}`, and `{fish_cues}`); unknown placeholders or empty replacement prompts disable the plugin with a configuration error. A non-replaceable output contract and the existing strict JSON/text, refusal, tool-call, enum, and length checks still apply.
 
-The **Translate TTS Control** Plugin Page supplies the operations that schema fields cannot represent safely: separate prompt reset buttons, preprocessing preview (never calls LLM/TTS), current cleanup status, two-step confirmed manual cleanup, and administrator-authenticated TTS preview. Preview first shows provider type, instance ID, model, voice, target language, emotion protocol, and possible-cost status; only its second confirmation performs synthesis. The page supports cancellation and a short-lived authenticated download. Chat administrators can use `/tts_preview [text]`, then `/tts_preview_confirm <token>`, or `/tts_preview_cancel`.
+The **Translate TTS Control** Plugin Page supplies the operations that schema fields cannot represent safely: separate prompt reset buttons, preprocessing preview (never calls LLM/TTS), current cleanup status, two-step confirmed manual cleanup, and administrator-authenticated TTS preview. Simplified Chinese is rendered from the first paint for headings, buttons, states, emotion choices, provider summaries, and diagnostics; the English resource remains available through AstrBot's WebUI language selection. Preview first shows provider type, instance ID, model, voice, target language, emotion protocol, and possible-cost status; only its second confirmation performs synthesis. The page supports cancellation and a short-lived authenticated download. Chat administrators can use `/tts_preview [text]`, then `/tts_preview_confirm <token>`, or `/tts_preview_cancel`.
 
 Preprocessing always keeps the untouched source for UI display and original-language fallback. If preprocessing produces an empty string, no translation or new synthesis is attempted. Continuity lives only in the current `TranslationScope`; modes are `off`, `conservative`, `allow_transition`, and `fixed_first`, with a configurable neutral-inheritance rule and segment cap. Fallback and the second synthesis attempt always use neutral, non-dynamic original text.
 
@@ -106,13 +106,13 @@ For Fish free development use, configure the official `https://api.fish.audio/v1
 
 | AstrBot provider type | Adapted models | Request control |
 | --- | --- | --- |
-| `fishaudio_tts_api` | `s2.1-pro-free`, `s2.1-pro`, `s2-pro`, `s1` | Full documented control set: 49 emotions, 6 tone cues, 11 audio effects, 5 special effects; up to 3 combined cues; S2 brackets or S1 fixed parentheses |
+| `fishaudio_tts_api` | `s2.1-pro-free`, `s2.1-pro`, `s2-pro`, `s1` | Guarded fine-grained natural-language performance directions by default for S2/S2.1; fixed documented tags for S1; up to 3 directions per controlled span; S2 brackets or S1 parentheses |
 | `elevenlabs_tts_api` | `eleven_v3` only | Whitelisted v3 audio tag |
 | `minimax_tts_api` | `speech-02-hd/turbo`, `speech-2.6-hd/turbo` | Request-local `voice_setting.emotion` |
 | `gemini_tts` | Gemini 2.5 Flash/Pro Preview TTS and 3.1 Flash TTS Preview | Request-local direction and labeled transcript |
 | Other types/models | Translation only | No emotion control is claimed or sent |
 
-For Fish, the same translation call returns allowlisted `fish_cues` and optional `fish_segments`. Segments enable sentence transitions and phrase-local emphasis, but their text must concatenate to the plain translation exactly. Only exact cues from the official [Fish Emotion Control reference](https://docs.fish.audio/developer-guide/core-features/emotions) are accepted. Unknown, duplicate, or excess cues are discarded; effects are requested only when supported by the source text. S1 automatically rejects the S2-only `emphasis` and `clear throat` cues.
+For Fish, the same translation call returns `fish_cues` and optional `fish_segments`. S2/S2.1 derives fine-grained performance directions from wording, punctuation, intensity, character attitude, and conversational subtext. For example, a sharp, forceful challenge can become `[very angry, high voice]` instead of the generic `[angry]`. Segments enable within-sentence transitions and phrase-local emphasis, but their text must concatenate to the plain translation exactly. S2 directions are bounded by English-character, length, deduplication, and three-direction validation. S1 remains restricted to exact cues from the official [Fish Emotion Control reference](https://docs.fish.audio/developer-guide/core-features/emotions) and rejects the S2-only `emphasis` and `clear throat` cues. Audible actions are requested only when supported by the source text and retain an emotion-bearing direction.
 
 ## Reloading, disabling, and upgrading
 

@@ -24,14 +24,14 @@ Checked read-only against local AstrBot 4.27.5 sources on 2026-09-07. All four `
 
 | Provider class/type | Model recognition | Isolated request field | Evidence level |
 | --- | --- | --- | --- |
-| `ProviderFishAudioTTSAPI` / `fishaudio_tts_api` | Strict plugin `fish_model` allowlist | Copied `headers`, explicit model, and up to three allowlisted cues from the complete official reference: 49 emotions, 6 tones, 11 audio effects, 5 special effects; S1 excludes its two undocumented cues | Real class with fake HTTP stream; no real listening |
+| `ProviderFishAudioTTSAPI` / `fishaudio_tts_api` | Strict plugin `fish_model` allowlist | Copied `headers` and explicit model; S2/S2.1 uses up to three guarded natural-language performance directions per controlled span, while S1 uses its fixed documented cue set | Real class with fake HTTP stream; no real listening |
 | `ProviderElevenLabsTTSAPI` / `elevenlabs_tts_api` | Exact `eleven_v3` | Controlled text; shared client/voice/settings untouched | Real class with fake client |
 | `ProviderMiniMaxTTSAPI` / `minimax_tts_api` | Speech 02 and 2.6 hd/turbo | Shallow call copy plus copied `voice_setting.emotion` | Real serialized body inspected |
 | `ProviderGeminiTTSAPI` / `gemini_tts` | Explicit TTS model allowlist | Shallow call copy with combined `prefix` | Real SDK arguments captured by fake client |
 
 OpenAI, Azure, Edge, DashScope, VolcEngine, MiMo, GSVI, Genie, unknown types, and unsupported models remain translation-only. No emotion adaptation is claimed for them.
 
-Fish S2 accepts square-bracket cues and S1 accepts a fixed parenthesized vocabulary. The plugin intentionally restricts S2's otherwise free-form natural-language control to the documented allowlist so model output cannot inject arbitrary speech directions. Duplicate/unknown cues are removed and the documented maximum recommendation of three combined cues is enforced.
+Fish S2/S2.1 accepts square-bracket natural-language directions and S1 accepts a fixed parenthesized vocabulary. The plugin permits S2's fine-grained control only after structural validation: directions must be concise English text without wrappers, are limited to 96 characters, are deduplicated, and are capped at the documented recommendation of three per controlled span. S1 continues to reject cues outside its fixed documented set.
 
 `metadata.yaml` declares `astrbot_version: ">=4.27.5,<4.28"`, only `qq_official`, and the project repository `https://github.com/Yyyyyylor/astrbot_plugin_translate_tts`.
 

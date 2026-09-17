@@ -53,6 +53,9 @@ class PluginI18nTests(unittest.TestCase):
             "preview_warning",
             "diagnostics_title",
             "diagnostics_refresh",
+            "prompt_reset_saved",
+            "preview_cancelled",
+            "operation_failed",
         }
         self.assertTrue(required.issubset(english["pages"]["control"]))
         with (ROOT / "_conf_schema.json").open(encoding="utf-8") as file:

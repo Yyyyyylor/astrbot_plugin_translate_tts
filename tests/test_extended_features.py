@@ -285,10 +285,12 @@ class PageContractTests(unittest.TestCase):
             Path(__file__).parents[1] / "pages" / "control" / "index.html"
         ).read_text(encoding="utf-8")
         for value in (
-            "Reset translation prompt",
-            "Preview preprocessing",
-            "Confirm possible quota cost and generate",
-            "Confirm deletion of registered expired files",
+            '<html lang="zh-CN">',
+            "恢复默认翻译提示词",
+            "预览处理结果",
+            "确认可能消耗额度并生成",
+            "确认删除已登记的过期文件",
+            "试听任务已取消",
             "bridge.download",
         ):
             self.assertIn(value, html)

@@ -158,7 +158,7 @@ class AdapterTests(unittest.TestCase):
         )
         self.assertEqual(prepared.text, "(scared) 訳文")
 
-    def test_fish_combines_up_to_three_documented_cues(self):
+    def test_fish_keeps_primary_emotion_when_physical_cues_fill_the_limit(self):
         provider = ProviderFishAudioTTSAPI("fish", "fishaudio_tts_api")
         settings = TranslationSettings(fish_model="s2.1-pro-free")
         prepared = prepare_call(
@@ -168,8 +168,20 @@ class AdapterTests(unittest.TestCase):
         )
         self.assertEqual(
             prepared.text,
-            "[nostalgic][whispering][background laughter] 訳文",
+            "[nostalgic][whispering][sad] 訳文",
         )
+
+    def test_fish_s2_renders_specific_combined_voice_direction(self):
+        provider = ProviderFishAudioTTSAPI("fish", "fishaudio_tts_api")
+        settings = TranslationSettings()
+        cues = normalize_fish_cues(["very angry, high voice,"], "s2.1-pro-free")
+        prepared = prepare_call(
+            resolve_provider(Context([provider]), provider, settings),
+            TranslationResult("你是笨蛋吗？", "あんたバカァ？", "angry", True, cues),
+            settings,
+        )
+        self.assertEqual(cues, ("very angry, high voice",))
+        self.assertEqual(prepared.text, "[very angry, high voice] あんたバカァ？")
 
     def test_fish_segments_place_transitions_without_changing_translation(self):
         provider = ProviderFishAudioTTSAPI("fish", "fishaudio_tts_api")
@@ -203,6 +215,19 @@ class AdapterTests(unittest.TestCase):
             (),
         )
 
+    def test_s2_segments_must_establish_the_initial_delivery(self):
+        self.assertEqual(
+            normalize_fish_segments(
+                [
+                    {"text": "最初。", "cues": []},
+                    {"text": "次。", "cues": ["very angry, high voice"]},
+                ],
+                "最初。次。",
+                "s2.1-pro-free",
+            ),
+            (),
+        )
+
     def test_s1_normalization_rejects_unsupported_and_unknown_cues(self):
         self.assertEqual(
             normalize_fish_cues(
@@ -211,6 +236,21 @@ class AdapterTests(unittest.TestCase):
             ),
             ("happy", "sighing"),
         )
+
+    def test_s2_direction_validation_rejects_wrappers_and_overlong_text(self):
+        self.assertEqual(
+            normalize_fish_cues(
+                [
+                    "[angry]",
+                    "very angry, high voice",
+                    "x" * 97,
+                    "very angry, high voice",
+                ],
+                "s2.1-pro-free",
+            ),
+            ("very angry, high voice",),
+        )
+        self.assertEqual(normalize_fish_cues(["very angry, high voice"], "s1"), ())
 
     def test_parallel_fish_call_snapshots_do_not_share_headers_or_emotion(self):
         provider = ProviderFishAudioTTSAPI("fish", "fishaudio_tts_api", "s2-pro")

@@ -360,13 +360,13 @@ class TranslationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.text, "原文")
         self.assertFalse(result.success)
 
-    async def test_fish_structured_output_accepts_full_documented_cues(self):
+    async def test_fish_s2_accepts_fine_grained_voice_direction(self):
         context = FakeContext(
             SimpleNamespace(
                 role="assistant",
                 completion_text=(
-                    '{"text":"静かに聞いて。","emotion":"calm",'
-                    '"fish_cues":["nostalgic","whispering","sighing","angry"],'
+                    '{"text":"あんたバカァ？","emotion":"angry",'
+                    '"fish_cues":["very angry, high voice,"],'
                     '"fish_segments":[]}'
                 ),
             )
@@ -374,14 +374,32 @@ class TranslationTests(unittest.IsolatedAsyncioTestCase):
         scope = make_scope(emotion_enabled=True)
         scope.selected_provider_type = "fishaudio_tts_api"
         scope.selected_fish_model = "s2.1-pro-free"
-        result = await TranslationService(context).translate_for_tts("静静听。", scope)
-        self.assertEqual(
-            result.fish_cues,
-            ("nostalgic", "whispering", "sighing"),
+        result = await TranslationService(context).translate_for_tts(
+            "你是笨蛋吗？", scope
         )
+        self.assertEqual(result.fish_cues, ("very angry, high voice",))
+        prompt = context.generate_calls[0]["system_prompt"]
+        self.assertIn('"very angry, high voice"', prompt)
+        self.assertIn("character attitude", prompt)
+        self.assertIn("zero to three", prompt)
+
+    async def test_fish_s1_prompt_keeps_fixed_documented_vocabulary(self):
+        context = FakeContext(
+            SimpleNamespace(
+                role="assistant",
+                completion_text=(
+                    '{"text":"静かに聞いて。","emotion":"calm",'
+                    '"fish_cues":["whispering"],"fish_segments":[]}'
+                ),
+            )
+        )
+        scope = make_scope(emotion_enabled=True)
+        scope.selected_provider_type = "fishaudio_tts_api"
+        scope.selected_fish_model = "s1"
+        await TranslationService(context).translate_for_tts("静静听。", scope)
         prompt = context.generate_calls[0]["system_prompt"]
         self.assertIn("background laughter", prompt)
-        self.assertIn("zero to three", prompt)
+        self.assertIn("Every cue must come only from", prompt)
 
 
 class LifecycleTests(unittest.IsolatedAsyncioTestCase):

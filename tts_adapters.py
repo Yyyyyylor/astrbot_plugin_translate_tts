@@ -8,6 +8,7 @@ from typing import Any
 
 from .config import TranslationSettings
 from .emotion import Emotion, TranslationResult
+from .fish_emotions import MAX_FISH_CUES
 
 FISH_TYPE = "fishaudio_tts_api"
 ELEVEN_TYPE = "elevenlabs_tts_api"
@@ -164,6 +165,43 @@ def _prefix(marker: str | None, text: str) -> str:
     return f"{marker} {text}" if marker else text
 
 
+_FISH_EMOTION_TERMS = {
+    "happy": ("happy", "joy", "delighted", "cheerful", "excited"),
+    "sad": ("sad", "devastated", "depressed", "grief", "sorrow", "tearful"),
+    "angry": ("angry", "furious", "frustrated", "annoyed", "irritated", "rage"),
+    "fearful": ("fearful", "scared", "terrified", "nervous", "anxious"),
+    "disgusted": ("disgusted", "repulsed", "revolted"),
+    "surprised": ("surprised", "shocked", "amazed", "astonished"),
+    "calm": ("calm", "relaxed", "peaceful", "reassuring", "unhurried"),
+}
+
+
+def _ensure_fish_emotion(
+    cues: tuple[str, ...], emotion: Emotion, model: str
+) -> tuple[str, ...]:
+    """Keep rich directions while ensuring physical cues retain emotion context."""
+    if emotion == "neutral":
+        return cues[:MAX_FISH_CUES]
+    terms = _FISH_EMOTION_TERMS[emotion]
+    if any(any(term in cue.lower() for term in terms) for cue in cues):
+        return cues[:MAX_FISH_CUES]
+    fallback = (
+        (_FISH_S1 if model == "s1" else _FISH_S2)[emotion]
+        .removeprefix("(")
+        .removeprefix("[")
+        .removesuffix(")")
+        .removesuffix("]")
+    )
+    if len(cues) < MAX_FISH_CUES:
+        return (*cues, fallback)
+    return (*cues[: MAX_FISH_CUES - 1], fallback)
+
+
+def _render_fish_cues(cues: tuple[str, ...], model: str) -> str:
+    left, right = ("(", ")") if model == "s1" else ("[", "]")
+    return "".join(f"{left}{cue}{right}" for cue in cues)
+
+
 def prepare_call(
     resolution: ProviderResolution,
     result: TranslationResult,
@@ -180,21 +218,24 @@ def prepare_call(
         clone = _copy_provider(provider, "ProviderFishAudioTTSAPI", headers="headers")
         clone.set_model(settings.fish_model)
         clone.headers["model"] = settings.fish_model
-        left, right = ("(", ")") if settings.fish_model == "s1" else ("[", "]")
         if dynamic_emotion and result.fish_segments:
-            controlled = "".join(
-                "".join(f"{left}{cue}{right}" for cue in segment.cues) + segment.text
-                for segment in result.fish_segments
-            )
+            controlled_parts: list[str] = []
+            for index, segment in enumerate(result.fish_segments):
+                cues = segment.cues
+                if index == 0:
+                    cues = tuple(dict.fromkeys((*result.fish_cues, *cues)))
+                    cues = _ensure_fish_emotion(cues, emotion, settings.fish_model)
+                controlled_parts.append(
+                    _render_fish_cues(cues, settings.fish_model) + segment.text
+                )
+            controlled = "".join(controlled_parts)
             return PreparedCall(clone, controlled, "fish")
-        markers: tuple[str, ...] = ()
+        cues: tuple[str, ...] = ()
         if dynamic_emotion and result.fish_cues:
-            markers = tuple(f"{left}{cue}{right}" for cue in result.fish_cues)
+            cues = _ensure_fish_emotion(result.fish_cues, emotion, settings.fish_model)
         elif emotion != "neutral":
-            markers = (
-                (_FISH_S1 if settings.fish_model == "s1" else _FISH_S2)[emotion],
-            )
-        marker_text = "".join(markers) or None
+            cues = _ensure_fish_emotion((), emotion, settings.fish_model)
+        marker_text = _render_fish_cues(cues, settings.fish_model) or None
         return PreparedCall(clone, _prefix(marker_text, result.text), "fish")
 
     if kind == ELEVEN_TYPE:

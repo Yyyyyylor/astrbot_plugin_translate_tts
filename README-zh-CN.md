@@ -35,7 +35,7 @@ Translate TTS 只改写“原有 AstrBot 链路已经决定送入 TTS”的文�
 
 ## 安装
 
-1. 从 [v1.2.1 Release](https://github.com/Yyyyyylor/astrbot_plugin_translate_tts/releases/tag/v1.2.1) 下载 `astrbot_plugin_translate_tts-v1.2.1.zip`。
+1. 从 [v1.3.0 Release](https://github.com/Yyyyyylor/astrbot_plugin_translate_tts/releases/tag/v1.3.0) 下载 `astrbot_plugin_translate_tts-1.3.0.zip`。
 2. 在 AstrBot WebUI 的插件管理器中安装该 ZIP，或将 ZIP 根目录中的文件解压到 `AstrBot/data/plugins/astrbot_plugin_translate_tts`。
 3. 不要把本开发工作区中的 `data`、`temp`、缓存、数据库或配置产物复制到生产环境；文档和测试文件不是运行必需项。
 4. 启动 AstrBot，或在 **WebUI > 插件** 中重载。
@@ -51,7 +51,7 @@ Translate TTS 只改写“原有 AstrBot 链路已经决定送入 TTS”的文�
 
 原生设置页现已提供翻译/情感提示词模式、全部预处理规则、清理保留期与周期、试听默认值以及回复级情感连续性。自定义提示词只接受 `{target_language}`、`{emotion_options}`、`{fish_cues}` 这三个受控占位符。未知占位符或空的“完全替换”提示词会产生配置错误并安全停用插件。不可替换的输出契约及原有 JSON/文本、拒答、工具调用、枚举和长度校验始终生效。
 
-**Translate TTS 控制台** 插件 Page 承载 Schema 不能安全表达的操作：分别恢复翻译/情感默认提示词、只做本地处理的预处理预览、清理状态、二次确认的立即清理，以及管理员认证的 TTS 试听。试听第一步只显示 provider 类型、实例 ID、模型、音色、目标语言、情感协议和可能产生费用的提示；第二次确认后才合成。页面支持取消和短时认证下载。聊天管理员也可使用 `/tts_preview [文本]`，随后执行 `/tts_preview_confirm <令牌>`，或用 `/tts_preview_cancel` 取消。
+**翻译 TTS 控制台** 插件 Page 承载 Schema 不能安全表达的操作：分别恢复翻译/情感默认提示词、只做本地处理的预处理预览、清理状态、二次确认的立即清理，以及管理员认证的 TTS 试听。页面初始渲染、按钮、状态、情感选项、提供商摘要与诊断摘要均已完整汉化，同时保留随 AstrBot WebUI 语言切换的英文资源。试听第一步只显示提供商类型、实例 ID、模型、音色、目标语言、情感控制方式和可能产生费用的提示；第二次确认后才合成。页面支持取消和短时认证下载。聊天管理员也可使用 `/tts_preview [文本]`，随后执行 `/tts_preview_confirm <令牌>`，或用 `/tts_preview_cancel` 取消。
 
 预处理始终保留未经处理的原文，用于界面显示和原文 TTS 回退。预处理结果为空时，不调用翻译或新增 TTS。连续性只保存在当前 `TranslationScope`，支持 `off`、`conservative`、`allow_transition`、`fixed_first`，并可设置 neutral 继承及最大分段数；原文回退和第二次合成始终使用不带动态情感的原文。
 
@@ -106,13 +106,13 @@ Fish 免费开发档应在适合当前账户时把 Fish provider 配置为官方
 
 | AstrBot provider 类型 | 已适配模型 | 请求控制 |
 | --- | --- | --- |
-| `fishaudio_tts_api` | `s2.1-pro-free`、`s2.1-pro`、`s2-pro`、`s1` | 完整文档集合：49 个情感、6 个语气、11 个声音效果、5 个特殊效果；最多组合 3 个；S2 方括号或 S1 固定圆括号 |
+| `fishaudio_tts_api` | `s2.1-pro-free`、`s2.1-pro`、`s2-pro`、`s1` | S2/S2.1 默认生成受约束的精细化自然语言表演指令，S1 使用固定文档标签；每个受控片段最多 3 个指令；S2 方括号、S1 圆括号 |
 | `elevenlabs_tts_api` | 仅 `eleven_v3` | 白名单 v3 audio tag |
 | `minimax_tts_api` | `speech-02-hd/turbo`、`speech-2.6-hd/turbo` | 调用副本的 `voice_setting.emotion` |
 | `gemini_tts` | Gemini 2.5 Flash/Pro Preview TTS、3.1 Flash TTS Preview | 调用副本的语气指令与明确 transcript |
 | 其他类型/型号 | 仅翻译 | 不发送、也不宣称情感控制 |
 
-Fish 路径会在同一次翻译调用中返回白名单 `fish_cues` 和可选 `fish_segments`。分段可实现逐句转场和短语级 emphasis，但所有分段正文必须逐字拼回纯译文。插件只接受 [Fish 情感控制官方参考](https://docs.fish.audio/developer-guide/core-features/emotions)列出的精确标签；未知、重复或超过三个的标签会被丢弃，声音效果仅在原文明示时选择。S1 会自动拒绝仅 S2 支持的 `emphasis` 与 `clear throat`。
+Fish 路径会在同一次翻译调用中返回 `fish_cues` 和可选 `fish_segments`。S2/S2.1 会根据措辞、标点、强度、角色态度和对话潜台词生成精细表演指令，例如将强烈、尖锐的质问表达为 `[very angry, high voice]`，而不只使用宽泛的 `[angry]`。分段可实现句内转场和短语级 emphasis，但所有分段正文必须逐字拼回纯译文。S2 指令会经过英文字符、长度、去重和最多三个指令的校验；S1 仍只接受 [Fish 情感控制官方参考](https://docs.fish.audio/developer-guide/core-features/emotions)中的固定标签，并自动拒绝仅 S2 支持的 `emphasis` 与 `clear throat`。笑声、叹气、喘气、耳语和喊叫等动作仅在原文明示时选择，并会保留对应的主要情绪语境。
 
 ## 重载、禁用与升级
 

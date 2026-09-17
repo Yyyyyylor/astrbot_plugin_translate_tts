@@ -92,7 +92,7 @@
         },
         "translation_prompt_text": {
             "description": "Custom translation prompt",
-            "hint": "{target_language}: resolved target language; {emotion_options}: allowed basic emotions; {fish_cues}: Fish cue allowlist (empty outside Fish mode). Write {{ or }} for a literal brace. Unknown placeholders are rejected."
+            "hint": "{target_language}: resolved target language; {emotion_options}: allowed basic emotions; {fish_cues}: S1 cue allowlist or S2 direction examples (empty outside Fish mode). Write {{ or }} for a literal brace. Unknown placeholders are rejected."
         },
         "emotion_prompt_mode": {
             "description": "Emotion prompt mode",
@@ -104,7 +104,7 @@
         },
         "emotion_prompt_text": {
             "description": "Custom emotion prompt",
-            "hint": "{target_language}: resolved target language; {emotion_options}: allowed basic emotions; {fish_cues}: Fish cue allowlist (empty outside Fish mode). Write {{ or }} for a literal brace. Unknown placeholders are rejected."
+            "hint": "{target_language}: resolved target language; {emotion_options}: allowed basic emotions; {fish_cues}: S1 cue allowlist or S2 direction examples (empty outside Fish mode). Write {{ or }} for a literal brace. Unknown placeholders are rejected."
         },
         "auto_cleanup_tts_files": {
             "description": "Automatically clean registered TTS files"
@@ -251,7 +251,7 @@
             "intro": "Save ordinary settings on the plugin configuration page. AstrBot reload creates a new immutable call snapshot.",
             "prompts_title": "Prompts",
             "prompts_desc": "Reset either prompt without changing an in-flight call.",
-            "translation_guide": "Translation prompt placeholders: {target_language} is the resolved target language; {emotion_options} is the allowed basic-emotion list; {fish_cues} is the Fish cue allowlist and is empty outside Fish mode. Use {{ and }} for literal braces.",
+            "translation_guide": "Translation prompt placeholders: {target_language} is the resolved target language; {emotion_options} is the allowed basic-emotion list; {fish_cues} contains the S1 cue allowlist or S2 direction examples and is empty outside Fish mode. Use {{ and }} for literal braces.",
             "emotion_guide": "Emotion prompt placeholders: {target_language}, {emotion_options}, and {fish_cues}. Unknown placeholders are rejected; use {{ and }} for literal braces.",
             "reset_translation": "Reset translation prompt",
             "reset_emotion": "Reset emotion prompt",
@@ -272,6 +272,11 @@
             "diagnostics_desc": "Privacy-safe phase timings, timeout ownership, provider class, proxy source presence, and recent outcomes. Message content and addresses are excluded.",
             "diagnostics_refresh": "Refresh diagnostics",
             "diagnostics_empty": "No diagnostic events yet.",
+            "diagnostics_generation": "Runtime generation",
+            "diagnostics_started_at": "Started at",
+            "diagnostics_level": "Log level",
+            "diagnostics_proxy": "Proxy environment",
+            "diagnostics_events": "Recent events",
             "cleanup_title": "File cleanup",
             "cleanup_plan": "Clean expired files now",
             "cleanup_confirm": "Confirm deletion of registered expired files",
@@ -297,7 +302,12 @@
             "none": "None",
             "preview_warning": "Real synthesis may consume provider quota.",
             "preview_generated": "Preview generated",
+            "preview_cancelled": "Preview task cancelled.",
+            "preview_not_running": "No preview task is currently running.",
             "cleanup_warning": "Registered expired files will be deleted.",
+            "prompt_reset_saved": "The built-in prompt has been restored.",
+            "reload_required": "Reload the plugin to apply the change.",
+            "operation_failed": "Operation failed",
             "emotion_neutral": "Neutral",
             "emotion_happy": "Happy",
             "emotion_sad": "Sad",

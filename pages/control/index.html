@@ -1,28 +1,154 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Translate TTS Control</title>
-<style>:root{font:15px system-ui;color:#172033;background:#f4f6fa}body{margin:0;padding:24px}.wrap{max-width:900px;margin:auto}.card{background:#fff;border:1px solid #dbe1ea;border-radius:14px;padding:18px;margin:14px 0;box-shadow:0 4px 18px #16213a0d}h1{font-size:24px}h2{font-size:18px}label{display:block;margin:10px 0 5px}textarea,select,input{box-sizing:border-box;width:100%;padding:10px;border:1px solid #bcc6d5;border-radius:8px}input[type=checkbox]{width:auto}button{margin:10px 6px 0 0;padding:9px 14px;border:0;border-radius:8px;background:#245bd7;color:#fff;cursor:pointer}button.danger{background:#b42318}button:disabled{opacity:.55;cursor:wait}.status{white-space:pre-wrap;background:#f7f8fb;border-radius:8px;padding:10px;min-height:22px}small{color:#526078}.guide{display:block;margin:7px 0;line-height:1.5}</style></head>
-<body><main class="wrap"><h1 id="pageTitle">Translate TTS Control</h1><p><small id="intro">Save ordinary settings on the plugin configuration page. AstrBot reload creates a new immutable call snapshot.</small></p>
-<section class="card"><h2 id="promptsTitle">Prompts</h2><p id="promptsDesc">Reset either prompt without changing an in-flight call.</p><small class="guide" id="translationGuide">Translation prompt placeholders: {target_language}, {emotion_options}, {fish_cues}. Use {{ and }} for literal braces.</small><small class="guide" id="emotionGuide">Emotion prompt placeholders: {target_language}, {emotion_options}, {fish_cues}. Unknown placeholders are rejected.</small><button id="resetTranslation">Reset translation prompt</button><button id="resetEmotion">Reset emotion prompt</button><div id="resetStatus" class="status"></div></section>
-<section class="card"><h2 id="preprocessTitle">Preprocessing preview</h2><label id="preTextLabel" for="preText">Test text</label><textarea id="preText" rows="7"></textarea><button id="pre">Preview preprocessing</button><label id="resultLabel">Result</label><div id="preStatus" class="status"></div></section>
-<section class="card"><h2 id="previewTitle">TTS preview</h2><label id="previewTextLabel">Preview text (empty uses a safe sample)</label><textarea id="text" rows="4"></textarea><label id="emotionLabel">Emotion</label><select id="emotion"><option value="neutral">neutral</option><option value="happy">happy</option><option value="sad">sad</option><option value="angry">angry</option><option value="fearful">fearful</option><option value="disgusted">disgusted</option><option value="surprised">surprised</option><option value="calm">calm</option></select><label id="providerLabel">TTS provider</label><select id="provider"></select><label><input id="translate" type="checkbox" checked> <span id="translateLabel">Translate first</span></label><button id="plan">Build preview plan</button><button id="generate" disabled>Confirm possible quota cost and generate</button><button id="cancel">Cancel preview</button><div id="previewStatus" class="status"></div><button id="download" hidden>Download preview</button></section>
-<section class="card"><h2 id="diagnosticsTitle">Diagnostics</h2><p><small id="diagnosticsDesc">Privacy-safe phase timings and recent outcomes. Message content and addresses are excluded.</small></p><button id="refreshDiagnostics">Refresh diagnostics</button><div id="diagnosticsStatus" class="status"></div></section>
-<section class="card"><h2 id="cleanupTitle">File cleanup</h2><div id="cleanupStatus" class="status"></div><button id="cleanupPlan" class="danger">Clean expired files now</button><button id="cleanupRun" class="danger" disabled>Confirm deletion of registered expired files</button></section>
-</main><script>
-const bridge=window.AstrBotPluginPage;let previewToken='',cleanupToken='',downloadToken='';
-const $=id=>document.getElementById(id);const busy=async(btn,fn)=>{btn.disabled=true;try{await fn()}catch(e){alert(e.message||e)}finally{btn.disabled=(btn.id==='generate'&&!previewToken)||(btn.id==='cleanupRun'&&!cleanupToken)||(btn.id==='download'&&!downloadToken)}};
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>翻译 TTS 控制台</title>
+  <style>
+    :root{font:15px system-ui;color:#172033;background:#f4f6fa}
+    body{margin:0;padding:24px}.wrap{max-width:900px;margin:auto}
+    .card{background:#fff;border:1px solid #dbe1ea;border-radius:14px;padding:18px;margin:14px 0;box-shadow:0 4px 18px #16213a0d}
+    h1{font-size:24px}h2{font-size:18px}label{display:block;margin:10px 0 5px}
+    textarea,select,input{box-sizing:border-box;width:100%;padding:10px;border:1px solid #bcc6d5;border-radius:8px}
+    input[type=checkbox]{width:auto}button{margin:10px 6px 0 0;padding:9px 14px;border:0;border-radius:8px;background:#245bd7;color:#fff;cursor:pointer}
+    button.danger{background:#b42318}button:disabled{opacity:.55;cursor:wait}
+    .status{white-space:pre-wrap;background:#f7f8fb;border-radius:8px;padding:10px;min-height:22px}
+    small{color:#526078}.guide{display:block;margin:7px 0;line-height:1.5}
+  </style>
+</head>
+<body>
+<main class="wrap">
+  <h1 id="pageTitle">翻译 TTS 控制台</h1>
+  <p><small id="intro">常规设置请在插件配置页保存；重载 AstrBot 后会生成新的调用配置快照。</small></p>
+
+  <section class="card">
+    <h2 id="promptsTitle">提示词</h2>
+    <p id="promptsDesc">可分别恢复两种内置提示词，不会影响正在执行的调用。</p>
+    <small class="guide" id="translationGuide">翻译提示词占位符：{target_language}、{emotion_options}、{fish_cues}。字面量大括号请写成 {{ 和 }}。</small>
+    <small class="guide" id="emotionGuide">情感提示词占位符：{target_language}、{emotion_options}、{fish_cues}。未知占位符会被拒绝。</small>
+    <button id="resetTranslation">恢复默认翻译提示词</button>
+    <button id="resetEmotion">恢复默认情感提示词</button>
+    <div id="resetStatus" class="status"></div>
+  </section>
+
+  <section class="card">
+    <h2 id="preprocessTitle">文本预处理预览</h2>
+    <label id="preTextLabel" for="preText">测试文本</label>
+    <textarea id="preText" rows="7"></textarea>
+    <button id="pre">预览处理结果</button>
+    <label id="resultLabel">处理结果</label>
+    <div id="preStatus" class="status"></div>
+  </section>
+
+  <section class="card">
+    <h2 id="previewTitle">TTS 试听</h2>
+    <label id="previewTextLabel" for="text">试听文本（留空时使用安全示例）</label>
+    <textarea id="text" rows="4"></textarea>
+    <label id="emotionLabel" for="emotion">试听情感</label>
+    <select id="emotion">
+      <option value="neutral">中性</option><option value="happy">开心</option>
+      <option value="sad">悲伤</option><option value="angry">愤怒</option>
+      <option value="fearful">害怕</option><option value="disgusted">厌恶</option>
+      <option value="surprised">惊讶</option><option value="calm">平静</option>
+    </select>
+    <label id="providerLabel" for="provider">TTS 提供商</label>
+    <select id="provider"></select>
+    <label><input id="translate" type="checkbox" checked> <span id="translateLabel">试听前先翻译</span></label>
+    <button id="plan">生成试听计划</button>
+    <button id="generate" disabled>确认可能消耗额度并生成</button>
+    <button id="cancel">取消试听</button>
+    <div id="previewStatus" class="status"></div>
+    <button id="download" hidden>下载试听音频</button>
+  </section>
+
+  <section class="card">
+    <h2 id="diagnosticsTitle">运行诊断</h2>
+    <p><small id="diagnosticsDesc">安全显示各阶段耗时、超时归属、提供商类型、代理配置状态和最近结果；不包含消息内容或地址。</small></p>
+    <button id="refreshDiagnostics">刷新诊断信息</button>
+    <div id="diagnosticsStatus" class="status"></div>
+  </section>
+
+  <section class="card">
+    <h2 id="cleanupTitle">文件清理</h2>
+    <div id="cleanupStatus" class="status"></div>
+    <button id="cleanupPlan" class="danger">立即清理过期文件</button>
+    <button id="cleanupRun" class="danger" disabled>确认删除已登记的过期文件</button>
+  </section>
+</main>
+
+<script>
+const bridge=window.AstrBotPluginPage;
+let previewToken='',cleanupToken='',downloadToken='';
+const $=id=>document.getElementById(id);
 const t=(key,fallback)=>bridge.t(`pages.control.${key}`,fallback);
-const providerSummary=x=>[`${t('provider_type','Provider type')}: ${x.type||'-'}`,`${t('instance_id','Instance ID')}: ${x.instance||'-'}`,`${t('model','Model')}: ${x.model||'-'}`,`${t('voice','Voice')}: ${x.voice||'-'}`,`${t('target_language','Target language')}: ${x.target_language||'-'}`,`${t('emotion_protocol','Emotion protocol')}: ${x.emotion_protocol||'-'}`,`${t('may_consume_quota','May consume quota')}: ${x.may_consume_quota?t('yes','Yes'):t('no','No')}`,`${t('may_cost','May incur charges')}: ${x.may_cost?t('yes','Yes'):t('no','No')}`].join('\n');
-const cleanupSummary=d=>{if(!d)return t('cleanup_unavailable','Cleanup status unavailable.');const last=d.last;if(!last)return `${t('last_cleanup','Last cleanup')}: ${t('never','Never')}\n${t('next_check','Next check')}: ${d.next_check||'-'}`;return `${t('last_cleanup','Last cleanup')}: ${last.checked_at}\n${t('deleted_files','Deleted files')}: ${last.deleted_files}\n${t('released_bytes','Released bytes')}: ${last.released_bytes}\n${t('error_types','Error types')}: ${(last.error_types||[]).join(', ')||t('none','None')}\n${t('next_check','Next check')}: ${d.next_check||'-'}`};
-const diagnosticSummary=d=>d?JSON.stringify(d,null,2):t('diagnostics_empty','No diagnostic events yet.');
-async function load(){const d=await bridge.apiGet('status');const p=$('provider');p.innerHTML='';const automatic=document.createElement('option');automatic.value='';automatic.textContent=t('provider_auto','Automatic / configured default');p.appendChild(automatic);for(const x of d.providers||[]){const o=document.createElement('option');o.value=x.id;o.textContent=`${x.id||t('unnamed','unnamed')} - ${x.type}`;p.appendChild(o)}$('cleanupStatus').textContent=cleanupSummary(d.cleanup);$('diagnosticsStatus').textContent=diagnosticSummary(d.diagnostics)}
-for(const [id,target] of [['resetTranslation','translation'],['resetEmotion','emotion']]){$(id).onclick=()=>busy($(id),async()=>{$('resetStatus').textContent=JSON.stringify(await bridge.apiPost('reset-prompts',{target}),null,2)})}
+const busy=async(btn,fn)=>{
+  btn.disabled=true;
+  try{await fn()}
+  catch(e){alert(`${t('operation_failed','操作失败')}：${e.message||e}`)}
+  finally{btn.disabled=(btn.id==='generate'&&!previewToken)||(btn.id==='cleanupRun'&&!cleanupToken)||(btn.id==='download'&&!downloadToken)}
+};
+const providerSummary=x=>[
+  `${t('provider_type','提供商类型')}：${x.type||'-'}`,
+  `${t('instance_id','实例 ID')}：${x.instance||'-'}`,
+  `${t('model','模型')}：${x.model||'-'}`,
+  `${t('voice','音色')}：${x.voice||'-'}`,
+  `${t('target_language','目标语言')}：${x.target_language||'-'}`,
+  `${t('emotion_protocol','情感控制方式')}：${x.emotion_protocol||'-'}`,
+  `${t('may_consume_quota','可能消耗额度')}：${x.may_consume_quota?t('yes','是'):t('no','否')}`,
+  `${t('may_cost','可能产生费用')}：${x.may_cost?t('yes','是'):t('no','否')}`
+].join('\n');
+const cleanupSummary=d=>{
+  if(!d)return t('cleanup_unavailable','无法获取清理状态。');
+  const last=d.last;
+  if(!last)return `${t('last_cleanup','最近清理时间')}：${t('never','尚未执行')}\n${t('next_check','下次检查时间')}：${d.next_check||'-'}`;
+  return `${t('last_cleanup','最近清理时间')}：${last.checked_at}\n${t('deleted_files','删除文件数')}：${last.deleted_files}\n${t('released_bytes','释放空间（字节）')}：${last.released_bytes}\n${t('error_types','错误类型')}：${(last.error_types||[]).join(', ')||t('none','无')}\n${t('next_check','下次检查时间')}：${d.next_check||'-'}`;
+};
+const diagnosticSummary=d=>{
+  if(!d)return t('diagnostics_empty','暂无诊断事件。');
+  const proxy=d.proxy_environment||{};
+  const events=d.recent_events||[];
+  return [
+    `${t('diagnostics_generation','运行代次')}：${d.generation||'-'}`,
+    `${t('diagnostics_started_at','启动时间')}：${d.started_at||'-'}`,
+    `${t('diagnostics_level','日志级别')}：${d.level||'-'}`,
+    `${t('diagnostics_proxy','代理环境')}：HTTP=${proxy.http_proxy?t('yes','是'):t('no','否')}，HTTPS=${proxy.https_proxy?t('yes','是'):t('no','否')}，NO_PROXY=${proxy.no_proxy?t('yes','是'):t('no','否')}`,
+    `${t('diagnostics_events','最近事件')}：${events.length?`\n${JSON.stringify(events,null,2)}`:t('diagnostics_empty','暂无诊断事件。')}`
+  ].join('\n');
+};
+async function load(){
+  const d=await bridge.apiGet('status');
+  const p=$('provider');p.innerHTML='';
+  const automatic=document.createElement('option');automatic.value='';automatic.textContent=t('provider_auto','自动 / 使用配置默认值');p.appendChild(automatic);
+  for(const x of d.providers||[]){const o=document.createElement('option');o.value=x.id;o.textContent=`${x.id||t('unnamed','未命名')} - ${x.type}`;p.appendChild(o)}
+  $('cleanupStatus').textContent=cleanupSummary(d.cleanup);
+  $('diagnosticsStatus').textContent=diagnosticSummary(d.diagnostics);
+}
+for(const [id,target] of [['resetTranslation','translation'],['resetEmotion','emotion']]){
+  $(id).onclick=()=>busy($(id),async()=>{await bridge.apiPost('reset-prompts',{target});$('resetStatus').textContent=`${t('prompt_reset_saved','默认提示词已恢复。')} ${t('reload_required','请重载插件以应用更改。')}`})
+}
 $('pre').onclick=()=>busy($('pre'),async()=>{$('preStatus').textContent=(await bridge.apiPost('preprocess',{text:$('preText').value})).text||''});
-$('plan').onclick=()=>busy($('plan'),async()=>{const body={text:$('text').value,emotion:$('emotion').value,translate:$('translate').checked,provider_id:$('provider').value};const d=await bridge.apiPost('preview-plan',body);previewToken=d.confirmation;$('generate').disabled=false;$('previewStatus').textContent=`${t('preview_warning','Real synthesis may consume provider quota.')}\n\n${providerSummary(d.provider)}`});
-$('generate').onclick=()=>busy($('generate'),async()=>{const d=await bridge.apiPost('preview-generate',{confirmation:previewToken});previewToken='';downloadToken=d.download;$('download').hidden=false;$('previewStatus').textContent=t('preview_generated','Preview generated')});
+$('plan').onclick=()=>busy($('plan'),async()=>{const body={text:$('text').value,emotion:$('emotion').value,translate:$('translate').checked,provider_id:$('provider').value};const d=await bridge.apiPost('preview-plan',body);previewToken=d.confirmation;$('generate').disabled=false;$('previewStatus').textContent=`${t('preview_warning','真实合成可能消耗提供商额度。')}\n\n${providerSummary(d.provider)}`});
+$('generate').onclick=()=>busy($('generate'),async()=>{const d=await bridge.apiPost('preview-generate',{confirmation:previewToken});previewToken='';downloadToken=d.download;$('download').hidden=false;$('previewStatus').textContent=t('preview_generated','试听音频生成成功。')});
 $('download').onclick=()=>busy($('download'),async()=>{const token=downloadToken;await bridge.download('preview-download',{token},'translate-tts-preview-audio');downloadToken=''});
-$('cancel').onclick=()=>busy($('cancel'),async()=>{$('previewStatus').textContent=JSON.stringify(await bridge.apiPost('preview-cancel',{}),null,2)});
+$('cancel').onclick=()=>busy($('cancel'),async()=>{const d=await bridge.apiPost('preview-cancel',{});$('previewStatus').textContent=d.cancelled?t('preview_cancelled','试听任务已取消。'):t('preview_not_running','当前没有正在运行的试听任务。')});
 $('refreshDiagnostics').onclick=()=>busy($('refreshDiagnostics'),load);
-$('cleanupPlan').onclick=()=>busy($('cleanupPlan'),async()=>{const d=await bridge.apiPost('cleanup-plan',{});cleanupToken=d.confirmation;$('cleanupRun').disabled=false;$('cleanupStatus').textContent=t('cleanup_warning','Registered expired files will be deleted.')});
+$('cleanupPlan').onclick=()=>busy($('cleanupPlan'),async()=>{const d=await bridge.apiPost('cleanup-plan',{});cleanupToken=d.confirmation;$('cleanupRun').disabled=false;$('cleanupStatus').textContent=t('cleanup_warning','即将删除已登记的过期文件。')});
 $('cleanupRun').onclick=()=>busy($('cleanupRun'),async()=>{const token=cleanupToken;cleanupToken='';const d=await bridge.apiPost('cleanup-run',{confirmation:token});$('cleanupStatus').textContent=cleanupSummary(d.status)});
-bridge.ready().then(async()=>{const labels={pageTitle:['title','Translate TTS Control'],intro:['intro','Save ordinary settings on the plugin configuration page. AstrBot reload creates a new immutable call snapshot.'],promptsTitle:['prompts_title','Prompts'],promptsDesc:['prompts_desc','Reset either prompt without changing an in-flight call.'],translationGuide:['translation_guide','Translation prompt placeholders: {target_language}, {emotion_options}, {fish_cues}. Use {{ and }} for literal braces.'],emotionGuide:['emotion_guide','Emotion prompt placeholders: {target_language}, {emotion_options}, {fish_cues}. Unknown placeholders are rejected.'],preprocessTitle:['preprocess_title','Preprocessing preview'],preTextLabel:['test_text','Test text'],resultLabel:['result','Result'],previewTitle:['preview_title','TTS preview'],previewTextLabel:['preview_text','Preview text (empty uses a safe sample)'],emotionLabel:['emotion','Emotion'],providerLabel:['provider','TTS provider'],translateLabel:['translate_first','Translate first'],diagnosticsTitle:['diagnostics_title','Diagnostics'],diagnosticsDesc:['diagnostics_desc','Privacy-safe phase timings and recent outcomes. Message content and addresses are excluded.'],refreshDiagnostics:['diagnostics_refresh','Refresh diagnostics'],cleanupTitle:['cleanup_title','File cleanup'],resetTranslation:['reset_translation','Reset translation prompt'],resetEmotion:['reset_emotion','Reset emotion prompt'],pre:['preprocess','Preview preprocessing'],plan:['preview_plan','Build preview plan'],generate:['preview_generate','Confirm possible quota cost and generate'],cancel:['preview_cancel','Cancel preview'],download:['download','Download preview'],cleanupPlan:['cleanup_plan','Clean expired files now'],cleanupRun:['cleanup_confirm','Confirm deletion of registered expired files']};for(const [id,[key,fallback]] of Object.entries(labels)){$(id).textContent=t(key,fallback)}document.title=$('pageTitle').textContent;for(const option of $('emotion').options){option.textContent=t(`emotion_${option.value}`,option.value)}await load()}).catch(e=>$('previewStatus').textContent=e.message||e);
-</script></body></html>
+bridge.ready().then(async()=>{
+  const labels={
+    pageTitle:['title','翻译 TTS 控制台'],intro:['intro','常规设置请在插件配置页保存；重载 AstrBot 后会生成新的调用配置快照。'],
+    promptsTitle:['prompts_title','提示词'],promptsDesc:['prompts_desc','可分别恢复两种内置提示词，不会影响正在执行的调用。'],
+    translationGuide:['translation_guide','翻译提示词占位符：{target_language}、{emotion_options}、{fish_cues}。字面量大括号请写成 {{ 和 }}。'],emotionGuide:['emotion_guide','情感提示词占位符：{target_language}、{emotion_options}、{fish_cues}。未知占位符会被拒绝。'],
+    preprocessTitle:['preprocess_title','文本预处理预览'],preTextLabel:['test_text','测试文本'],resultLabel:['result','处理结果'],
+    previewTitle:['preview_title','TTS 试听'],previewTextLabel:['preview_text','试听文本（留空时使用安全示例）'],emotionLabel:['emotion','试听情感'],providerLabel:['provider','TTS 提供商'],translateLabel:['translate_first','试听前先翻译'],
+    diagnosticsTitle:['diagnostics_title','运行诊断'],diagnosticsDesc:['diagnostics_desc','安全显示各阶段耗时、超时归属、提供商类型、代理配置状态和最近结果；不包含消息内容或地址。'],refreshDiagnostics:['diagnostics_refresh','刷新诊断信息'],
+    cleanupTitle:['cleanup_title','文件清理'],resetTranslation:['reset_translation','恢复默认翻译提示词'],resetEmotion:['reset_emotion','恢复默认情感提示词'],pre:['preprocess','预览处理结果'],plan:['preview_plan','生成试听计划'],generate:['preview_generate','确认可能消耗额度并生成'],cancel:['preview_cancel','取消试听'],download:['download','下载试听音频'],cleanupPlan:['cleanup_plan','立即清理过期文件'],cleanupRun:['cleanup_confirm','确认删除已登记的过期文件']
+  };
+  for(const [id,[key,fallback]] of Object.entries(labels)){$(id).textContent=t(key,fallback)}
+  document.title=$('pageTitle').textContent;
+  for(const option of $('emotion').options){option.textContent=t(`emotion_${option.value}`,option.textContent)}
+  await load();
+}).catch(e=>$('previewStatus').textContent=`${t('operation_failed','操作失败')}：${e.message||e}`);
+</script>
+</body>
+</html>

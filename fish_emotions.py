@@ -1,7 +1,8 @@
-"""Documented Fish Audio S2/S1 emotion and delivery cue allowlists."""
+"""Fish Audio S1 cues and guarded S2 natural-language directions."""
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 
 FISH_EMOTIONS = frozenset(
@@ -100,6 +101,21 @@ FISH_S2_CUES = frozenset(
 )
 FISH_S1_CUES = frozenset(FISH_S2_CUES - {"emphasis", "clear throat"})
 MAX_FISH_CUES = 3
+MAX_FISH_S2_DIRECTION_CHARS = 96
+
+FISH_S2_DIRECTION_EXAMPLES = (
+    "very angry, high voice",
+    "warm, gentle, reassuring, slightly slower",
+    "quietly devastated, voice slightly trembling",
+    "playful, slightly smug, lively pitch",
+    "whispering",
+    "shouting",
+    "sigh",
+    "long pause",
+    "emphasis",
+)
+
+_S2_DIRECTION_PATTERN = re.compile(r"[a-z0-9][a-z0-9 ,.'’/-]*", re.IGNORECASE)
 
 
 @dataclass(frozen=True, slots=True)
@@ -111,21 +127,33 @@ class FishSegment:
 
 
 def allowed_fish_cues(model: str) -> frozenset[str]:
-    """Return the documented fixed cue vocabulary for the selected model."""
+    """Return fixed S1 cues or documented S2 reference examples."""
     return FISH_S1_CUES if model == "s1" else FISH_S2_CUES
 
 
 def normalize_fish_cues(value: object, model: str) -> tuple[str, ...]:
-    """Keep at most three distinct documented cues, in model-returned order."""
+    """Keep safe request-local directions in model-returned order.
+
+    S1 has a closed documented vocabulary. S2 accepts concise natural-language
+    directions, so it uses structural validation instead of pretending that the
+    S1 reference table is an exhaustive allowlist.
+    """
     if not isinstance(value, list):
         return ()
-    allowed = allowed_fish_cues(model)
     normalized: list[str] = []
     for item in value:
         if not isinstance(item, str):
             continue
-        cue = " ".join(item.strip().lower().split())
-        if cue in allowed and cue not in normalized:
+        cue = " ".join(item.strip().lower().split()).strip(" ,.;:!?")
+        if model == "s1":
+            valid = cue in FISH_S1_CUES
+        else:
+            valid = (
+                bool(cue)
+                and len(cue) <= MAX_FISH_S2_DIRECTION_CHARS
+                and _S2_DIRECTION_PATTERN.fullmatch(cue) is not None
+            )
+        if valid and cue not in normalized:
             normalized.append(cue)
         if len(normalized) == MAX_FISH_CUES:
             break
@@ -142,11 +170,15 @@ def normalize_fish_segments(
     for item in value:
         if not isinstance(item, dict):
             return ()
+        if set(item) != {"text", "cues"}:
+            return ()
         text = item.get("text")
         if not isinstance(text, str) or not text:
             return ()
         segments.append(FishSegment(text, normalize_fish_cues(item.get("cues"), model)))
     if "".join(segment.text for segment in segments) != translated_text:
+        return ()
+    if model != "s1" and not segments[0].cues:
         return ()
     if not any(segment.cues for segment in segments):
         return ()

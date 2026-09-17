@@ -4,6 +4,30 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [1.3.0] - 2026-09-17
+
+### Added
+
+- Complete Simplified Chinese first-paint fallbacks for the AstrBot Control Page, including prompts, preprocessing, TTS preview, diagnostics, cleanup, emotion choices, provider summaries, and action outcomes; the English locale remains available through AstrBot's language selection.
+- Localized diagnostic summary labels and localized feedback for prompt reset, preview cancellation, preview generation, and client-side operation failures.
+
+### Changed
+
+- Fish S2/S2.1 now uses guarded, fine-grained natural-language voice directions by default instead of treating the S1 reference table as an exhaustive S2 allowlist.
+- The built-in Fish prompt now directs intensity, pitch, pace, energy, restraint, character attitude, and conversational subtext, with sentence/phrase-local transitions only when supported by the text.
+
+### Fixed
+
+- Physical Fish cues and segment-level controls no longer silently displace the primary emotion; the request renderer keeps an emotion-bearing direction within the three-cue limit.
+- S2 direction normalization removes trailing punctuation and rejects wrappers, control syntax, non-English instruction text, and overlong directions before inserting tags.
+- The Control Page no longer flashes English before localization initializes or displays raw English JSON for prompt-reset and preview-cancel outcomes.
+
+### Validation
+
+- Full offline pytest suite, Python compilation, JSON resource parsing, Ruff checks, package-content inspection, and rendered-page visual review.
+
 ## [1.2.2] - 2026-09-08
 
 ### Added
@@ -18,8 +42,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Documentation
 
 - Documented Docker proxy reachability and separated AstrBot QQ Official `APIReturnNoneError`/WebSocket recovery from plugin translation failures.
-
-## [Unreleased]
 
 ## [1.2.1] - 2026-09-07
 
@@ -100,7 +122,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - No source text, translated text, or credentials are intentionally written to plugin logs or persistent storage.
 - Runtime adapters are limited by owner, task, session, source path, and active patch generation.
 
-[Unreleased]: https://github.com/Yyyyyylor/astrbot_plugin_translate_tts/compare/v1.2.1...HEAD
+[Unreleased]: https://github.com/Yyyyyylor/astrbot_plugin_translate_tts/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/Yyyyyylor/astrbot_plugin_translate_tts/compare/v1.2.2...v1.3.0
+[1.2.2]: https://github.com/Yyyyyylor/astrbot_plugin_translate_tts/compare/v1.2.1...v1.2.2
 [1.2.1]: https://github.com/Yyyyyylor/astrbot_plugin_translate_tts/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/Yyyyyylor/astrbot_plugin_translate_tts/compare/v1.0.0...v1.2.0
 [1.0.0]: https://github.com/Yyyyyylor/astrbot_plugin_translate_tts/releases/tag/v1.0.0
