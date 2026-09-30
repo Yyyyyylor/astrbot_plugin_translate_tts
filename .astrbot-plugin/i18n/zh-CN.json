@@ -77,7 +77,7 @@
         },
         "enable_proactive_compat": {
             "description": "\u542f\u7528\u4e3b\u52a8 TTS \u517c\u5bb9",
-            "hint": "\u4e3a proactive_chat v1.2.5 \u548c private_companion v6.6.2 \u5df2\u89e6\u53d1\u7684 TTS \u5408\u6210\u542f\u7528\u7ffb\u8bd1\u3002"
+            "hint": "\u4e3a proactive_chat v1.2.5/v1.2.6 \u548c private_companion v6.6.2 \u5df2\u89e6\u53d1\u7684 TTS \u5408\u6210\u542f\u7528\u7ffb\u8bd1\u3002"
         },
         "custom_prompts_enabled": {
             "description": "\u542f\u7528\u81ea\u5b9a\u4e49\u63d0\u793a\u8bcd"

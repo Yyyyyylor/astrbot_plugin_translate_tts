@@ -14,12 +14,14 @@ Translate TTS 只改写“原有 AstrBot 链路已经决定送入 TTS”的文�
 | 平台 | `qq_official` | 本机配置快照中只有一个已启用的 `qq_official` 平台；尚未验证真实 QQ 送达和播放 |
 | 回答模式 | 非流式 | 已做单元测试；流式结果会主动透传 |
 | `astrbot_plugin_proactive_chat` | 仅 v1.2.5；参考 commit `d1203524f29be248a4975bac1f7586e9557434ee` | 本机磁盘源码全部匹配固定指纹；当前没有可核验的已加载运行实例 |
+| `astrbot_plugin_proactive_chat` | 仅 v1.2.6；调研 commit `635fc18eeb84e3c7b58661425359244552286835` | 使用假翻译、TTS 和投递接口离线执行上游发送方法；真实送达与播放尚未验证 |
 | `astrbot_plugin_private_companion` | 仅 v6.6.2；调研 commit `2313fd12e1bd9b72f6db9aca17cde4359102341e` | 仅完成离线契约测试；已加载源码、平台送达与播放均未核验 |
 | LLM/TTS provider | AstrBot 已配置实例；Fish、ElevenLabs v3、MiniMax Speech 02/2.6、Gemini TTS 情感适配 | 已用假 transport 对真实 4.27.5 provider 序列化离线验证；尚未真实合成和试听 |
 
 精确运行状态、源码探针和真实环境验收清单见[兼容性与诊断](docs/compatibility.md)。
 
 Private Companion 适配已包含在 v1.4.0 中。
+v1.4.1 新增 Proactive Chat v1.2.6 适配，同时保留 v1.2.5 支持。
 
 以上本机检查是 2026-09-06 的离线快照：未发现 AstrBot/Python/uvicorn 后端进程，Translate TTS 也尚未安装到实际插件目录。因此，它不能证明运行时包装已启用，更不能证明 QQ、模型或 TTS 的实际行为。
 
@@ -33,13 +35,14 @@ Private Companion 适配已包含在 v1.4.0 中。
 - 译文合成异常或没有返回音频时，最多再用原文尝试一次。任务取消会向上传播，不启动回退。
 - 普通回答沿用既有 TTS 概率和开关。
 - 主动聊天沿用既有 TTS 开关、分段、装饰钩子、发送间隔和历史逻辑；插件只复制本次配置并强制发送原文，不修改会话数据。
+- Proactive Chat v1.2.6 的 `event`、`initial_chain` 原样透传，保留媒体组件，并将布尔送达结果返回调用方。
 - Private Companion 保留原有主动 TTS 触发、装饰钩子、分段、安全校验与平台投递。只有原合成链调用 `get_audio` 时才翻译，并使用它选定的投递 `unified_msg_origin` 作为翻译会话上下文。
 
 用户看到的仍是原语言文本，不显示译文。文本与语音的先后顺序由原链路决定。
 
 ## 安装
 
-1. 从 [v1.4.0 Release](https://github.com/Yyyyyylor/astrbot_plugin_translate_tts/releases/tag/v1.4.0) 下载 `astrbot_plugin_translate_tts-1.4.0.zip`。
+1. 从 [v1.4.1 Release](https://github.com/Yyyyyylor/astrbot_plugin_translate_tts/releases/tag/v1.4.1) 下载 `astrbot_plugin_translate_tts-1.4.1.zip`。
 2. 在 AstrBot WebUI 的插件管理器中安装该 ZIP，或将 ZIP 根目录中的文件解压到 `AstrBot/data/plugins/astrbot_plugin_translate_tts`。
 3. 不要把本开发工作区中的 `data`、`temp`、缓存、数据库或配置产物复制到生产环境；文档和测试文件不是运行必需项。
 4. 启动 AstrBot，或在 **WebUI > 插件** 中重载。
@@ -76,7 +79,7 @@ Private Companion 适配已包含在 v1.4.0 中。
 | `max_input_chars` | `4000` | 范围 1–100000；超限时完整原文绕过翻译。 |
 | `max_output_chars` | `12000` | 范围 1–200000；超长模型输出会被拒绝。 |
 | `max_concurrent_translations` | `2` | 范围 1–100；仅限制本插件实例。 |
-| `enable_proactive_compat` | `true` | 启用主动聊天 v1.2.5 和 Private Companion v6.6.2 运行时适配。 |
+| `enable_proactive_compat` | `true` | 启用主动聊天 v1.2.5/v1.2.6 和 Private Companion v6.6.2 运行时适配。 |
 | `diagnostic_log_level` | `normal` | `minimal`、`normal` 或 `verbose`；绝不包含消息、译文、endpoint/代理地址或凭据。 |
 | `diagnostic_event_buffer_size` | `100` | 在内存中保留 20–500 条管理员安全事件；重载即清空。 |
 | `slow_phase_warning_seconds` | `15` | 翻译或 TTS 超过该时长时记录警告。 |
@@ -138,7 +141,7 @@ Fish 路径会在同一次翻译调用中返回 `fish_cues` 和可选 `fish_segm
 - <strong>Docker 代理：</strong> 翻译 provider 必须能从容器内部访问代理。宿主机代理若写为 `127.0.0.1`，实际指向容器本身；请改用容器可访问的主机名/地址，并先在 AstrBot WebUI 测试 provider。
 - <strong>QQ Official `APIReturnNoneError`：</strong> 这是 botpy 返回 `None` 后由 AstrBot QQ 适配器抛出的重试异常，与翻译异常分离。若随后出现 `Websocket session starting`，说明 QQ 连接发生波动；请检查容器出口、全局代理和 QQ 凭据，并在禁用本插件时测试普通纯文本回复。
 - <strong>译文合成后又尝试原文：</strong> 音色可能不支持目标语言，或 provider 返回空结果。
-- <strong>看不到原文：</strong> 确认适配器不是 `incompatible`；主动聊天元数据必须恰为 `1.2.5`。
+- <strong>看不到原文：</strong> 确认适配器不是 `incompatible`；主动聊天元数据必须为 `1.2.5` 或 `1.2.6`，且发送方法签名匹配对应版本。
 - <strong>主动适配为 `not_installed`：</strong> 加载/启用主动聊天，必要时重载本插件。
 - <strong>重载后语音重复：</strong> 依次卸载两个插件，先加载主动聊天，再加载本插件；保留 `superseded`/签名日志。
 

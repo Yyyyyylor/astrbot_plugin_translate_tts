@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.4.1] - 2026-09-30
+
+### Fixed
+
+- Support Proactive Chat v1.2.6's extended send signature, forwarding its event and complete initial message chain and preserving the boolean delivery result used by upstream history and scheduling logic.
+- Recheck compatibility when the same active instance reports a different version instead of reusing the previous version's adapter status.
+
+### Changed
+
+- Retain Proactive Chat v1.2.5 and Private Companion v6.6.2 compatibility; update bilingual compatibility hints and installation links.
+
+### Validation
+
+- 105 offline tests, Ruff checks, and six simulated scenarios executing the inspected upstream v1.2.6 sender passed. ZIP contents were checked for runtime modules and bilingual resources. Live platform delivery, real LLM/TTS calls, and audio playback remain unverified.
+
 ## [1.4.0] - 2026-09-30
 
 ### Added
@@ -137,7 +152,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - No source text, translated text, or credentials are intentionally written to plugin logs or persistent storage.
 - Runtime adapters are limited by owner, task, session, source path, and active patch generation.
 
-[Unreleased]: https://github.com/Yyyyyylor/astrbot_plugin_translate_tts/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/Yyyyyylor/astrbot_plugin_translate_tts/compare/v1.4.1...HEAD
+[1.4.1]: https://github.com/Yyyyyylor/astrbot_plugin_translate_tts/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/Yyyyyylor/astrbot_plugin_translate_tts/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/Yyyyyylor/astrbot_plugin_translate_tts/compare/v1.2.2...v1.3.0
 [1.2.2]: https://github.com/Yyyyyylor/astrbot_plugin_translate_tts/compare/v1.2.1...v1.2.2

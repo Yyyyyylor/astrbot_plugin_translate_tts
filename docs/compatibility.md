@@ -15,7 +15,8 @@ This document separates runtime signature compatibility, pinned-source verificat
 | Path | Supported baseline | Required runtime surface | Unsupported/degraded behavior |
 | --- | --- | --- | --- |
 | Normal reply | AstrBot 4.27.5, non-streaming | Async-generator `ResultDecorateStage.process(self, event)` and async `Context.get_using_tts_provider_async(self, umo)` | Streaming replies pass through. Signature mismatch disables the normal adapter. |
-| Proactive reply | `astrbot_plugin_proactive_chat` v1.2.5, reference commit `d1203524f29be248a4975bac1f7586e9557434ee` | Async bound `_send_proactive_message(session_id, text)`, synchronous bound `_get_session_config(session_id)`, and synchronous `Context.get_using_tts_provider(self, umo)` | Missing/inactive reports `not_installed`; any other version or signature mismatch reports `incompatible`. |
+| Proactive reply v1.2.5 | `astrbot_plugin_proactive_chat` v1.2.5, reference commit `d1203524f29be248a4975bac1f7586e9557434ee` | Async bound `_send_proactive_message(session_id, text)`, synchronous bound `_get_session_config(session_id)`, and synchronous `Context.get_using_tts_provider(self, umo)` | Missing/inactive reports `not_installed`; unsupported versions or signature mismatches report `incompatible`. |
+| Proactive reply v1.2.6 | `astrbot_plugin_proactive_chat` v1.2.6, inspected commit `635fc18eeb84e3c7b58661425359244552286835` | Async bound `_send_proactive_message(session_id, text, event=None, initial_chain=None)` returning `bool`; the same synchronous config and TTS getter as v1.2.5 | Arguments and delivery result pass through; only the inspected versions are accepted. |
 | Private Companion proactive delivery | `astrbot_plugin_private_companion` v6.6.2, inspected commit `2313fd12e1bd9b72f6db9aca17cde4359102341e` | Async bound `_send_chain_components(umo, chain, *, apply_decorating_hooks=True)`, `_create_voice_record_component(target, spoken_text, *, defer_local_playback=False)`, and `_tts_generate_audio_path(tts_provider, text)` | Other versions or signature mismatches fail closed. Only existing TTS calls are translated; no new voice trigger is added. |
 | Delivery | AstrBot 4.27.5 `qq_official` | Existing AstrBot/proactive-chat sending and media-upload paths | No platform-specific upload or retry code is added. Other platforms are not declared supported. |
 
@@ -55,6 +56,8 @@ Private Companion selects a `unified_msg_origin` from bound, observed, or succes
 
 Scopes are bound to the current asyncio task, owner, source path, session identifier, configuration snapshot, and active patch generation. A provider proxy retained outside its matching scope transparently calls the original provider. Proactive `always_send_text` is changed only in a per-call copy whose nested `tts_settings` is copied separately.
 
+Proactive Chat v1.2.6 retains the supplied event and full initial message chain, including media. Its sender owns decoration, segmentation, after-send hooks, delivery fallbacks, and history updates. Translate TTS forwards positional/keyword arguments and returns the upstream `True`/`False` result so failed delivery is not counted as successful. On 2026-09-30, the inspected upstream sender was executed offline with fake translation/TTS/delivery boundaries to check original text and media preservation, segmentation, disabled TTS, hook interception, and failed delivery. This is simulated integration, not a loaded-instance or live-platform check. [Inspected sender source](https://github.com/Pancakes-Labs/astrbot_plugin_proactive_chat/blob/635fc18eeb84e3c7b58661425359244552286835/core/message_sender.py).
+
 Unload/reload restores an attribute only while it still points to this plugin's wrapper. Later third-party wrappers are preserved. A newer Translate TTS generation deactivates and unwraps an older generation to avoid stacked translation calls.
 
 ## Observable adapter states
@@ -64,7 +67,7 @@ Unload/reload restores an attribute only while it still points to this plugin's 
 | State | Meaning | Operator action |
 | --- | --- | --- |
 | `signature_compatible_unverified` | Required signatures matched and wrappers are active. It does not authenticate source content or prove delivery. | Continue with a source probe and live acceptance if those assurances are required. |
-| `not_installed` | Adapter/dependency was not found or is inactive. | For proactive chat, install/enable v1.2.5 and reload it; reload Translate TTS if no load event was observed. |
+| `not_installed` | Adapter/dependency was not found or is inactive. | For proactive chat, install/enable v1.2.5 or v1.2.6 and reload it; reload Translate TTS if no load event was observed. |
 | `disabled` | Configuration disabled the adapter, or configuration was invalid. | Check `enabled`, `enable_proactive_compat`, custom language, and numeric ranges; save and reload. |
 | `incompatible` | Registry access, signatures, version, or patch installation did not meet the guarded baseline. | Do not force the patch. Restore supported versions and collect the complete detail. |
 | `closed` | Adapter was unloaded or explicitly closed. | Expected during disable/unload; reload for a new generation. |

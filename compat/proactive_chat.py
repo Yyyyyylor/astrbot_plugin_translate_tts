@@ -1,4 +1,4 @@
-"""Runtime compatibility for proactive_chat v1.2.5.
+"""Runtime compatibility for proactive_chat v1.2.5 and v1.2.6.
 
 The adapter patches only live Python objects.  It never edits the proactive
 plugin's files or its session configuration dictionaries.
@@ -19,8 +19,11 @@ from .patch_manager import PatchManager
 from .status import CompatibilityStatus
 
 PROACTIVE_PLUGIN_NAME = "astrbot_plugin_proactive_chat"
-SUPPORTED_VERSION = "1.2.5"
 BASELINE_COMMIT = "d1203524f29be248a4975bac1f7586e9557434ee"
+SUPPORTED_BASELINES = {
+    "1.2.5": BASELINE_COMMIT,
+    "1.2.6": "635fc18eeb84e3c7b58661425359244552286835",
+}
 
 
 def _normalized_version(value: Any) -> str:
@@ -108,7 +111,7 @@ class ProactiveChatAdapter:
         instance = getattr(metadata, "star_cls", None)
         raw_version = str(getattr(metadata, "version", "") or "")
         version = _normalized_version(raw_version)
-        if version != SUPPORTED_VERSION:
+        if version not in SUPPORTED_BASELINES:
             self._drop_patches()
             self._set_status(
                 ProactiveCompatibilityStatus(
@@ -132,7 +135,11 @@ class ProactiveChatAdapter:
                 )
             )
             return self.status
-        if self.instance is instance and self.active:
+        if (
+            self.instance is instance
+            and self.active
+            and _normalized_version(self.status.version) == version
+        ):
             return self.status
 
         send = getattr(instance, "_send_proactive_message", None)
@@ -140,8 +147,13 @@ class ProactiveChatAdapter:
         context = getattr(instance, "context", None)
         sync_getter = getattr(type(context), "get_using_tts_provider", None)
         problems: list[str] = []
-        if not _has_bound_signature(send, ("session_id", "text")):
-            problems.append("_send_proactive_message(session_id, text)")
+        send_parameters = (
+            ("session_id", "text", "event", "initial_chain")
+            if version == "1.2.6"
+            else ("session_id", "text")
+        )
+        if not _has_bound_signature(send, send_parameters):
+            problems.append(f"_send_proactive_message({', '.join(send_parameters)})")
         if not inspect.iscoroutinefunction(send):
             problems.append("_send_proactive_message must be async")
         if not _has_bound_signature(get_config, ("session_id",)):
@@ -208,8 +220,8 @@ class ProactiveChatAdapter:
                 "proactive",
                 "signature_compatible_unverified",
                 (
-                    "v1.2.5 signatures are compatible; installed commit/content "
-                    f"was not verified as {BASELINE_COMMIT}"
+                    f"v{version} signatures are compatible; installed commit/content "
+                    f"was not verified as {SUPPORTED_BASELINES[version]}"
                 ),
                 raw_version,
                 False,
@@ -334,14 +346,13 @@ class ProactiveChatAdapter:
         adapter = self
 
         @functools.wraps(original)
-        async def wrapped(session_id: str, text: str) -> None:
+        async def wrapped(session_id: str, text: str, *args: Any, **kwargs: Any) -> Any:
             if (
                 not adapter.active
                 or not adapter.plugin.settings.enabled
                 or not adapter.plugin.settings.enable_proactive_compat
             ):
-                await original(session_id, text)
-                return
+                return await original(session_id, text, *args, **kwargs)
             scope = TranslationScope(
                 "proactive",
                 session_id,
@@ -359,7 +370,7 @@ class ProactiveChatAdapter:
                 )
             token = current_translation_scope.set(scope)
             try:
-                await original(session_id, text)
+                return await original(session_id, text, *args, **kwargs)
             finally:
                 if diagnostics is not None:
                     diagnostics.emit(

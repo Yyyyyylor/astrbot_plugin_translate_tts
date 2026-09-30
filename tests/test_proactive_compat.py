@@ -82,6 +82,15 @@ class Translation:
         return "訳:" + text
 
 
+class ProactivePlugin126(ProactivePlugin):
+    async def _send_proactive_message(
+        self, session_id, text, event=None, initial_chain=None
+    ):
+        self.received = (event, initial_chain)
+        await super()._send_proactive_message(session_id, text)
+        return getattr(self, "delivery_result", True)
+
+
 class Logger:
     def __init__(self):
         self.entries = []
@@ -261,6 +270,53 @@ class ProactiveCompatibilityTests(unittest.IsolatedAsyncioTestCase):
         status = self.adapter.install_metadata(metadata(wrong))
         self.assertEqual(status.state, "incompatible")
         self.assertIn("signature mismatch", status.detail)
+
+    async def test_126_forwards_event_chain_and_delivery_result(self):
+        modern = ProactivePlugin126(self.context, {self.session: self.original_config})
+        status = self.adapter.install_metadata(metadata(modern, "v1.2.6"))
+        self.assertEqual(status.state, "signature_compatible_unverified")
+        self.assertIn("635fc18", status.detail)
+        event, chain = object(), [object(), object()]
+        result = await modern._send_proactive_message(
+            self.session, "原文", event=event, initial_chain=chain
+        )
+        self.assertIs(result, True)
+        self.assertIs(modern.received[0], event)
+        self.assertIs(modern.received[1], chain)
+        self.assertEqual(self.provider.calls, ["訳:原文"])
+        self.assertEqual(modern.sent[-1], (self.session, "plain", "原文"))
+        self.assertFalse(self.original_config["tts_settings"]["always_send_text"])
+
+        modern.delivery_result = False
+        result = await modern._send_proactive_message(
+            self.session, "失败", event, chain
+        )
+        self.assertIs(result, False)
+        self.assertIsNone(current_translation_scope.get())
+
+    async def test_126_disabled_adapter_keeps_arguments_and_false_result(self):
+        modern = ProactivePlugin126(self.context, {self.session: self.original_config})
+        self.adapter.install_metadata(metadata(modern, "1.2.6"))
+        self.owner.settings = TranslationSettings(enable_proactive_compat=False)
+        modern.delivery_result = False
+        event, chain = object(), [object()]
+        result = await modern._send_proactive_message(
+            self.session, "原文", event, chain
+        )
+        self.assertIs(result, False)
+        self.assertEqual(modern.received, (event, chain))
+        self.assertEqual(self.translation.calls, [])
+        self.assertEqual(self.provider.calls, ["原文"])
+        self.assertEqual(len(modern.sent), 1)
+
+    async def test_126_metadata_rejects_legacy_or_unknown_send_signature(self):
+        status = self.adapter.install_metadata(metadata(self.proactive, "1.2.6"))
+        self.assertEqual(status.state, "incompatible")
+        self.assertIn("event, initial_chain", status.detail)
+        modern = ProactivePlugin126(self.context, {})
+        status = self.adapter.install_metadata(metadata(modern, "1.2.7"))
+        self.assertEqual(status.state, "incompatible")
+        self.assertFalse(self.adapter.active)
 
     async def test_missing_or_inactive_registry_is_reported_separately(self):
         self.context.stars = []

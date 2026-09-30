@@ -77,7 +77,7 @@
         },
         "enable_proactive_compat": {
             "description": "Enable proactive TTS compatibility",
-            "hint": "Enables translation for existing TTS calls in proactive_chat v1.2.5 and private_companion v6.6.2."
+            "hint": "Enables translation for existing TTS calls in proactive_chat v1.2.5/v1.2.6 and private_companion v6.6.2."
         },
         "custom_prompts_enabled": {
             "description": "Enable custom prompts"
