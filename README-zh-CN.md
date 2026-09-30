@@ -14,9 +14,12 @@ Translate TTS 只改写“原有 AstrBot 链路已经决定送入 TTS”的文�
 | 平台 | `qq_official` | 本机配置快照中只有一个已启用的 `qq_official` 平台；尚未验证真实 QQ 送达和播放 |
 | 回答模式 | 非流式 | 已做单元测试；流式结果会主动透传 |
 | `astrbot_plugin_proactive_chat` | 仅 v1.2.5；参考 commit `d1203524f29be248a4975bac1f7586e9557434ee` | 本机磁盘源码全部匹配固定指纹；当前没有可核验的已加载运行实例 |
+| `astrbot_plugin_private_companion` | 仅 v6.6.2；调研 commit `2313fd12e1bd9b72f6db9aca17cde4359102341e` | 仅完成离线契约测试；已加载源码、平台送达与播放均未核验 |
 | LLM/TTS provider | AstrBot 已配置实例；Fish、ElevenLabs v3、MiniMax Speech 02/2.6、Gemini TTS 情感适配 | 已用假 transport 对真实 4.27.5 provider 序列化离线验证；尚未真实合成和试听 |
 
 精确运行状态、源码探针和真实环境验收清单见[兼容性与诊断](docs/compatibility.md)。
+
+Private Companion 适配已包含在 v1.4.0 中。
 
 以上本机检查是 2026-09-06 的离线快照：未发现 AstrBot/Python/uvicorn 后端进程，Translate TTS 也尚未安装到实际插件目录。因此，它不能证明运行时包装已启用，更不能证明 QQ、模型或 TTS 的实际行为。
 
@@ -30,12 +33,13 @@ Translate TTS 只改写“原有 AstrBot 链路已经决定送入 TTS”的文�
 - 译文合成异常或没有返回音频时，最多再用原文尝试一次。任务取消会向上传播，不启动回退。
 - 普通回答沿用既有 TTS 概率和开关。
 - 主动聊天沿用既有 TTS 开关、分段、装饰钩子、发送间隔和历史逻辑；插件只复制本次配置并强制发送原文，不修改会话数据。
+- Private Companion 保留原有主动 TTS 触发、装饰钩子、分段、安全校验与平台投递。只有原合成链调用 `get_audio` 时才翻译，并使用它选定的投递 `unified_msg_origin` 作为翻译会话上下文。
 
 用户看到的仍是原语言文本，不显示译文。文本与语音的先后顺序由原链路决定。
 
 ## 安装
 
-1. 从 [v1.3.0 Release](https://github.com/Yyyyyylor/astrbot_plugin_translate_tts/releases/tag/v1.3.0) 下载 `astrbot_plugin_translate_tts-1.3.0.zip`。
+1. 从 [v1.4.0 Release](https://github.com/Yyyyyylor/astrbot_plugin_translate_tts/releases/tag/v1.4.0) 下载 `astrbot_plugin_translate_tts-1.4.0.zip`。
 2. 在 AstrBot WebUI 的插件管理器中安装该 ZIP，或将 ZIP 根目录中的文件解压到 `AstrBot/data/plugins/astrbot_plugin_translate_tts`。
 3. 不要把本开发工作区中的 `data`、`temp`、缓存、数据库或配置产物复制到生产环境；文档和测试文件不是运行必需项。
 4. 启动 AstrBot，或在 **WebUI > 插件** 中重载。
@@ -43,7 +47,7 @@ Translate TTS 只改写“原有 AstrBot 链路已经决定送入 TTS”的文�
 
 设置面板支持简体中文和英文。使用 AstrBot WebUI 的语言选择按钮选择 **中文** 或 **English**，插件名称、设置说明、提示和目标语言选项会随之切换。首次安装或更新 `.astrbot-plugin/i18n` 文件后请重载插件。
 
-本插件没有额外第三方 Python 依赖。AstrBot 必须已有可用的 LLM 和 TTS provider。主动消息还需单独安装受支持版本的主动聊天插件。
+本插件没有额外第三方 Python 依赖。AstrBot 必须已有可用的 LLM 和 TTS provider。主动消息还需单独安装受支持版本的主动聊天或 Private Companion 插件。
 
 ## 配置
 
@@ -59,7 +63,7 @@ Translate TTS 只改写“原有 AstrBot 链路已经决定送入 TTS”的文�
 
 | 字段 | 默认值 | 可接受值与作用 |
 | --- | --- | --- |
-| `enabled` | `true` | 总开关；关闭时两条适配链路均透传。 |
+| `enabled` | `true` | 总开关；关闭时所有适配链路均透传。 |
 | `emotion_enabled` | `true` | 启用结构化情感判断和已适配 provider 控制；关闭后仍保留翻译与 provider 选择。 |
 | `tts_provider_id` | 空 | 原生 TTS 选择器；有效 ID 优先，无效显式 ID 保持原上游链路。 |
 | `tts_selection_mode` | `prefer_fish` | 空 ID 时优先原 Fish 或唯一 Fish；`follow_upstream` 沿用上游。 |
@@ -72,7 +76,7 @@ Translate TTS 只改写“原有 AstrBot 链路已经决定送入 TTS”的文�
 | `max_input_chars` | `4000` | 范围 1–100000；超限时完整原文绕过翻译。 |
 | `max_output_chars` | `12000` | 范围 1–200000；超长模型输出会被拒绝。 |
 | `max_concurrent_translations` | `2` | 范围 1–100；仅限制本插件实例。 |
-| `enable_proactive_compat` | `true` | 启用主动聊天 v1.2.5 运行时适配。 |
+| `enable_proactive_compat` | `true` | 启用主动聊天 v1.2.5 和 Private Companion v6.6.2 运行时适配。 |
 | `diagnostic_log_level` | `normal` | `minimal`、`normal` 或 `verbose`；绝不包含消息、译文、endpoint/代理地址或凭据。 |
 | `diagnostic_event_buffer_size` | `100` | 在内存中保留 20–500 条管理员安全事件；重载即清空。 |
 | `slow_phase_warning_seconds` | `15` | 翻译或 TTS 超过该时长时记录警告。 |
@@ -125,7 +129,7 @@ Fish 路径会在同一次翻译调用中返回 `fish_cues` 和可选 `fish_segm
 
 ## 诊断与故障排查
 
-在日志中搜索 `Translate TTS normal compatibility` 和 `Translate TTS proactive compatibility`。正常运行状态是 `signature_compatible_unverified`：所需签名匹配，但不证明特定源码 commit，也不证明 QQ 已实际收到或播放。
+在日志中搜索 `Translate TTS normal compatibility`、`Translate TTS proactive compatibility` 和 `Translate TTS private_companion compatibility`。正常运行状态是 `signature_compatible_unverified`：所需签名匹配，但不证明特定源码 commit 或实际送达、播放。
 
 - <strong>没有译文语音，也没有翻译请求：</strong> 确认上游 TTS 确实触发、结果为非流式、本插件在会话启用，并已选择 TTS provider。
 - <strong>`reason=queue_timeout`：</strong> 插件未能取得翻译并发名额；可谨慎提高 `translation_queue_timeout_seconds` 或 `max_concurrent_translations`。
@@ -146,7 +150,7 @@ Fish 路径会在同一次翻译调用中返回 `fish_cues` 和可选 `fish_segm
 
 原链路选中用于 TTS 的文本会发送给翻译 LLM provider；译文（或回退原文）会发送给 TTS provider。请检查两者的留存和网络策略。翻译请求不带聊天历史、图片、音频、工具或人格，但原文本身仍可能敏感。
 
-本插件不持久化译文，只安装运行时包装，不修改 AstrBot、主动聊天源码或共享会话配置字典。
+本插件不持久化译文，只安装运行时包装，不修改 AstrBot、主动聊天、Private Companion 源码或共享会话配置字典。
 
 ## 开发与测试
 

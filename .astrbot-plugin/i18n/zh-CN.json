@@ -76,8 +76,8 @@
             "hint": "\u9650\u5236\u672c\u63d2\u4ef6\u5b9e\u4f8b\u540c\u65f6\u8fdb\u884c\u7684\u7ffb\u8bd1\u8bf7\u6c42\u6570\u3002"
         },
         "enable_proactive_compat": {
-            "description": "\u542f\u7528\u4e3b\u52a8\u804a\u5929\u517c\u5bb9",
-            "hint": "\u4e3a astrbot_plugin_proactive_chat v1.2.5 \u7684 TTS \u8def\u5f84\u542f\u7528\u7ffb\u8bd1\u3002"
+            "description": "\u542f\u7528\u4e3b\u52a8 TTS \u517c\u5bb9",
+            "hint": "\u4e3a proactive_chat v1.2.5 \u548c private_companion v6.6.2 \u5df2\u89e6\u53d1\u7684 TTS \u5408\u6210\u542f\u7528\u7ffb\u8bd1\u3002"
         },
         "custom_prompts_enabled": {
             "description": "\u542f\u7528\u81ea\u5b9a\u4e49\u63d0\u793a\u8bcd"

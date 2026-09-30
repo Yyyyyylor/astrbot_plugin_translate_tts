@@ -14,9 +14,12 @@ The plugin does **not** add speech triggers, replace the chat response, mutate s
 | Platform | `qq_official` | The local configuration snapshot contains one enabled `qq_official` platform; live QQ delivery and playback have not been tested |
 | Reply mode | Non-streaming | Unit tested; streaming results intentionally pass through |
 | `astrbot_plugin_proactive_chat` | Exactly v1.2.5; reference commit `d1203524f29be248a4975bac1f7586e9557434ee` | The local on-disk source matches all pinned fingerprints; no loaded runtime instance was available to inspect |
+| `astrbot_plugin_private_companion` | Exactly v6.6.2; inspected commit `2313fd12e1bd9b72f6db9aca17cde4359102341e` | Offline contract tests only; loaded source, platform delivery, and playback remain unverified |
 | LLM/TTS providers | Configured AstrBot instances; emotion adapters for Fish, ElevenLabs v3, MiniMax Speech 02/2.6, and Gemini TTS | Real 4.27.5 provider serialization tested offline with fake transports; real synthesis and listening remain untested |
 
 See [Compatibility and diagnostics](docs/compatibility.md) for exact runtime states, source probes, and the live acceptance checklist.
+
+Private Companion compatibility is included in v1.4.0.
 
 The local inspection above is an offline snapshot from 2026-09-06. No AstrBot/Python/uvicorn backend process was observed, and Translate TTS was not installed in the live plugin directory. It therefore proves neither active wrapper status nor actual QQ/model/TTS behavior.
 
@@ -30,12 +33,13 @@ The local inspection above is an offline snapshot from 2026-09-06. No AstrBot/Py
 - If translated-text synthesis fails or returns no audio, the original text is attempted once. Cancellation propagates without fallback.
 - Existing normal-reply TTS probability/settings remain authoritative.
 - Existing proactive-chat TTS enablement, segmentation, hooks, timing, and history remain authoritative. A per-call configuration copy forces original text without mutating session data.
+- Private Companion retains its proactive TTS trigger, decoration, segmentation, safety checks, and platform delivery. Translation runs only when its existing synthesis path calls `get_audio`; its selected delivery `unified_msg_origin` is used for translation context.
 
 The visible message remains the original-language text; the translation is not displayed. Text/audio ordering is controlled by the upstream path.
 
 ## Installation
 
-1. Download `astrbot_plugin_translate_tts-1.3.0.zip` from the [v1.3.0 release](https://github.com/Yyyyyylor/astrbot_plugin_translate_tts/releases/tag/v1.3.0).
+1. Download `astrbot_plugin_translate_tts-1.4.0.zip` from the [v1.4.0 release](https://github.com/Yyyyyylor/astrbot_plugin_translate_tts/releases/tag/v1.4.0).
 2. In AstrBot WebUI, open the plugin manager and install the downloaded ZIP, or extract its root-level files into `AstrBot/data/plugins/astrbot_plugin_translate_tts`.
 3. Do not copy this checkout's local `data`, `temp`, cache, database, or configuration artifacts into production. Documentation and tests are optional for runtime use.
 4. Start AstrBot, or reload the plugin in **WebUI > Plugins**.
@@ -43,7 +47,7 @@ The visible message remains the original-language text; the translation is not d
 
 The settings panel is available in English and Simplified Chinese. Use the AstrBot WebUI language selector to choose **English** or **中文**; the plugin name, descriptions, hints, and target-language labels follow that choice. Reload the plugin after installing or updating the `.astrbot-plugin/i18n` files.
 
-No third-party Python package is required. AstrBot must already have working LLM and TTS providers. Proactive messages require the supported proactive-chat version installed separately.
+No third-party Python package is required. AstrBot must already have working LLM and TTS providers. Proactive compatibility requires a supported proactive-chat or private-companion version installed separately.
 
 ## Configuration
 
@@ -59,7 +63,7 @@ Cleanup is off by default and retains files for 30 days when enabled. Only real 
 
 | Key | Default | Accepted values and effect |
 | --- | --- | --- |
-| `enabled` | `true` | Master switch; false makes both adapters pass through. |
+| `enabled` | `true` | Master switch; false makes all adapters pass through. |
 | `emotion_enabled` | `true` | Enables structured emotion inference and supported-provider controls. False keeps translation and provider selection. |
 | `tts_provider_id` | empty | Native TTS selector. A valid ID overrides selection mode; an invalid explicit ID preserves the untouched upstream path. |
 | `tts_selection_mode` | `prefer_fish` | Empty-ID behavior: prefer upstream Fish or one configured Fish; `follow_upstream` keeps the upstream provider. |
@@ -72,7 +76,7 @@ Cleanup is off by default and retains files for 30 days when enabled. Only real 
 | `max_input_chars` | `4000` | Range 1–100000. Longer input bypasses translation without truncation. |
 | `max_output_chars` | `12000` | Range 1–200000. Longer model output is rejected. |
 | `max_concurrent_translations` | `2` | Range 1–100, scoped to this plugin instance. |
-| `enable_proactive_compat` | `true` | Enables the v1.2.5 proactive-chat runtime adapter. |
+| `enable_proactive_compat` | `true` | Enables proactive-chat v1.2.5 and private-companion v6.6.2 runtime adapters. |
 | `diagnostic_log_level` | `normal` | `minimal`, `normal`, or `verbose`; never includes message text, translations, endpoint/proxy addresses, or credentials. |
 | `diagnostic_event_buffer_size` | `100` | Keeps 20–500 safe events in memory for administrators; cleared on reload. |
 | `slow_phase_warning_seconds` | `15` | Emits a warning when translation or TTS exceeds this duration. |
@@ -125,7 +129,7 @@ Outside supported versions, the affected adapter fails closed and logs `incompat
 
 ## Diagnostics and troubleshooting
 
-Search logs for `Translate TTS normal compatibility` and `Translate TTS proactive compatibility`. The healthy runtime state is `signature_compatible_unverified`: required signatures matched, but this does not prove a source commit or successful QQ delivery.
+Search logs for `Translate TTS normal compatibility`, `Translate TTS proactive compatibility`, and `Translate TTS private_companion compatibility`. The healthy runtime state is `signature_compatible_unverified`: required signatures matched, but this does not prove a source commit or successful delivery.
 
 - **No translated audio or translation request:** confirm upstream TTS actually triggered, the result is non-streaming, this plugin is enabled for the session, and a TTS provider is selected.
 - **`reason=queue_timeout`:** the plugin could not acquire one of its translation slots. Increase `translation_queue_timeout_seconds` or `max_concurrent_translations` cautiously.
@@ -146,7 +150,7 @@ The plugin never logs source text, translated text, prompts, response content, e
 
 TTS-selected text is sent to the configured translation LLM; its translation (or fallback source) is sent to the TTS provider. Review both providers' retention and network policies. The translation request contains no conversation history, images, audio, tools, or persona, but source text can still be sensitive.
 
-The plugin does not persist translations. Its runtime wrappers do not edit AstrBot/proactive-chat files or shared session configuration dictionaries.
+The plugin does not persist translations. Its runtime wrappers do not edit AstrBot, proactive-chat, or private-companion files or shared session configuration dictionaries.
 
 ## Development and tests
 

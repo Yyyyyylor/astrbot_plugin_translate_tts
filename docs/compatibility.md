@@ -16,6 +16,7 @@ This document separates runtime signature compatibility, pinned-source verificat
 | --- | --- | --- | --- |
 | Normal reply | AstrBot 4.27.5, non-streaming | Async-generator `ResultDecorateStage.process(self, event)` and async `Context.get_using_tts_provider_async(self, umo)` | Streaming replies pass through. Signature mismatch disables the normal adapter. |
 | Proactive reply | `astrbot_plugin_proactive_chat` v1.2.5, reference commit `d1203524f29be248a4975bac1f7586e9557434ee` | Async bound `_send_proactive_message(session_id, text)`, synchronous bound `_get_session_config(session_id)`, and synchronous `Context.get_using_tts_provider(self, umo)` | Missing/inactive reports `not_installed`; any other version or signature mismatch reports `incompatible`. |
+| Private Companion proactive delivery | `astrbot_plugin_private_companion` v6.6.2, inspected commit `2313fd12e1bd9b72f6db9aca17cde4359102341e` | Async bound `_send_chain_components(umo, chain, *, apply_decorating_hooks=True)`, `_create_voice_record_component(target, spoken_text, *, defer_local_playback=False)`, and `_tts_generate_audio_path(tts_provider, text)` | Other versions or signature mismatches fail closed. Only existing TTS calls are translated; no new voice trigger is added. |
 | Delivery | AstrBot 4.27.5 `qq_official` | Existing AstrBot/proactive-chat sending and media-upload paths | No platform-specific upload or retry code is added. Other platforms are not declared supported. |
 
 ## Emotion provider compatibility snapshot
@@ -48,7 +49,9 @@ Consequently, the proactive-chat disk checkout is source-verified, but there is 
 
 ## Runtime adaptation boundary
 
-The plugin applies reversible runtime wrappers and never edits AstrBot or `astrbot_plugin_proactive_chat` files. The normal adapter patches two AstrBot class attributes. The proactive adapter patches two attributes on the actual registered proactive-chat instance and the synchronous getter on its Context class.
+The plugin applies reversible runtime wrappers and never edits AstrBot or third-party plugin files. The normal adapter patches two AstrBot class attributes. The proactive-chat adapter patches two attributes on its registered instance and the synchronous getter on its Context class. The private-companion adapter patches three methods on its registered instance only; its existing decorating hooks, TTS safety checks, platform `send_by_session`, `Context.send_message`, and OneBot fallback still own delivery.
+
+Private Companion selects a `unified_msg_origin` from bound, observed, or successful private routes, with its own generated fallback, then passes it to `_send_proactive_message_chain` and `_send_chain_components`. The adapter captures that exact UMO per asyncio task and never invents a session identifier. Its synthetic decorating event may use a derived event origin, but translation uses the selected delivery UMO and intercepts the final `_tts_generate_audio_path` call after the upstream provider choice. Voice actions enter through `_create_voice_record_component`. These call sites were inspected at the reference commit; runtime metadata only proves a version and method signatures, not source identity. For dependable delivery, configure and verify a persistent route in Private Companion; its own platform path ultimately sends through `send_by_session` or `Context.send_message` with the selected UMO.
 
 Scopes are bound to the current asyncio task, owner, source path, session identifier, configuration snapshot, and active patch generation. A provider proxy retained outside its matching scope transparently calls the original provider. Proactive `always_send_text` is changed only in a per-call copy whose nested `tts_settings` is copied separately.
 
@@ -56,7 +59,7 @@ Unload/reload restores an attribute only while it still points to this plugin's 
 
 ## Observable adapter states
 
-`TranslateTTSPlugin.compatibility_statuses` exposes `normal` and `proactive` `CompatibilityStatus` values. Transitions are also logged under `Translate TTS normal compatibility` and `Translate TTS proactive compatibility`.
+`TranslateTTSPlugin.compatibility_statuses` exposes `normal`, `proactive`, and `private_companion` `CompatibilityStatus` values. Transitions are logged under their respective `Translate TTS ... compatibility` prefixes.
 
 | State | Meaning | Operator action |
 | --- | --- | --- |
@@ -75,7 +78,7 @@ The authoritative defaults are in `_conf_schema.json`; the complete operator-fac
 
 | Keys | Accepted runtime contract | Diagnostic effect |
 | --- | --- | --- |
-| `enabled`, `enable_proactive_compat` | Booleans; both default to `true` | The master switch disables both paths; the proactive switch disables only proactive compatibility. Save and reload after changing either value. |
+| `enabled`, `enable_proactive_compat` | Booleans; both default to `true` | The master switch disables all paths; the proactive switch disables both proactive-chat and private-companion adapters. Save and reload after changing either value. |
 | `emotion_enabled` | Boolean, default `true` | False keeps translation and TTS selection but emits no plugin-generated dynamic emotion control. |
 | `tts_provider_id`, `tts_selection_mode` | Real TTS ID or empty; `prefer_fish`/`follow_upstream` | Explicit ID wins. Missing/non-TTS explicit IDs preserve upstream source speech. Ambiguous Fish selection uses upstream. |
 | `fish_model` | `s2.1-pro-free`, `s2.1-pro`, `s2-pro`, or `s1` | Applied only to Fish call copies and sent in the real header. No automatic paid fallback. |
@@ -137,12 +140,12 @@ Automated tests do not establish translation quality, spoken-language accuracy, 
 
 ## Required live acceptance (not yet run)
 
-These checks require a disposable QQ test conversation, explicit user authorization, credentials, network access, configured real LLM/TTS providers, and the user's actual proactive-chat installation. Do not send a live message without explicit authorization.
+These checks require a disposable test conversation, explicit user authorization, credentials, network access, configured real LLM/TTS providers, and the user's actual proactive-chat or private-companion installation. Do not send a live message without explicit authorization.
 
 1. Record AstrBot 4.27.5, QQ Official adapter type (including Webhook use), plugin versions/source, provider IDs, TTS model/voice, and target language without secrets.
 2. In private chat, exercise a normal reply with upstream voice-only output and verify exactly one original-language text plus one playable Japanese audio message.
 3. Repeat in an enabled test group and verify actual delivery/playback, not only internal return values.
-4. Repeat normal and proactive paths with upstream text/dual output enabled; confirm original text appears exactly once.
+4. Repeat normal, proactive-chat, and private-companion paths with upstream text/dual output enabled; confirm original text appears exactly once. For private-companion also check its explicit voice action and a saved delivery UMO.
 5. Disable proactive TTS and confirm zero translation requests and unchanged original text behavior.
 6. Select another language supported by the TTS model/voice and verify pronunciation.
 7. Make the translation provider unavailable; confirm original-language audio plus text and no silent switch from an explicitly selected model.

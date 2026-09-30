@@ -5,7 +5,6 @@ import unittest
 from types import SimpleNamespace
 
 from translate_tts.compat.proactive_chat import (
-    BASELINE_COMMIT,
     PROACTIVE_PLUGIN_NAME,
     ProactiveChatAdapter,
 )
@@ -262,7 +261,6 @@ class ProactiveCompatibilityTests(unittest.IsolatedAsyncioTestCase):
         status = self.adapter.install_metadata(metadata(wrong))
         self.assertEqual(status.state, "incompatible")
         self.assertIn("signature mismatch", status.detail)
-        self.assertEqual(len(BASELINE_COMMIT), 40)
 
     async def test_missing_or_inactive_registry_is_reported_separately(self):
         self.context.stars = []

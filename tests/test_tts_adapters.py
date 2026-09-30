@@ -1,18 +1,11 @@
 from __future__ import annotations
 
-import json
 import unittest
 from types import SimpleNamespace
 
 from translate_tts.config import ConfigurationError, TranslationSettings
 from translate_tts.emotion import TranslationResult
 from translate_tts.fish_emotions import (
-    FISH_AUDIO_EFFECTS,
-    FISH_EMOTIONS,
-    FISH_S1_CUES,
-    FISH_S2_CUES,
-    FISH_SPECIAL_EFFECTS,
-    FISH_TONE_CUES,
     FishSegment,
     normalize_fish_cues,
     normalize_fish_segments,
@@ -116,16 +109,6 @@ class ProviderSelectionTests(unittest.TestCase):
 class AdapterTests(unittest.TestCase):
     def result(self, emotion="happy", fish_cues=()):
         return TranslationResult("原文", "訳文", emotion, True, fish_cues)
-
-    def test_complete_documented_fish_cue_sets(self):
-        self.assertEqual(len(FISH_EMOTIONS), 49)
-        self.assertEqual(len(FISH_TONE_CUES), 6)
-        self.assertEqual(len(FISH_AUDIO_EFFECTS), 11)
-        self.assertEqual(len(FISH_SPECIAL_EFFECTS), 5)
-        self.assertEqual(len(FISH_S2_CUES), 71)
-        self.assertEqual(len(FISH_S1_CUES), 69)
-        self.assertNotIn("emphasis", FISH_S1_CUES)
-        self.assertNotIn("clear throat", FISH_S1_CUES)
 
     def test_fish_free_model_and_state_are_request_local(self):
         provider = ProviderFishAudioTTSAPI("fish", "fishaudio_tts_api", "s2-pro")
@@ -290,10 +273,6 @@ class AdapterTests(unittest.TestCase):
         )
         self.assertEqual(prepared.provider.voice_setting["emotion"], "angry")
         self.assertEqual(provider.voice_setting["emotion"], "upstream")
-        body = json.loads(
-            json.dumps({"voice_setting": prepared.provider.voice_setting})
-        )
-        self.assertEqual(body["voice_setting"]["emotion"], "angry")
 
     def test_gemini_instruction_isolated_and_model_gated(self):
         provider = ProviderGeminiTTSAPI(

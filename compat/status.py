@@ -17,7 +17,7 @@ CompatibilityState = Literal[
 
 @dataclass(frozen=True, slots=True)
 class CompatibilityStatus:
-    adapter: Literal["normal", "proactive"]
+    adapter: Literal["normal", "proactive", "private_companion"]
     state: CompatibilityState
     detail: str
     version: str = ""

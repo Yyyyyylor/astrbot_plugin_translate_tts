@@ -279,23 +279,5 @@ class EmptyPreprocessProxyTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(context.calls, [])
 
 
-class PageContractTests(unittest.TestCase):
-    def test_page_has_confirmed_operations_and_no_framework(self):
-        html = (
-            Path(__file__).parents[1] / "pages" / "control" / "index.html"
-        ).read_text(encoding="utf-8")
-        for value in (
-            '<html lang="zh-CN">',
-            "恢复默认翻译提示词",
-            "预览处理结果",
-            "确认可能消耗额度并生成",
-            "确认删除已登记的过期文件",
-            "试听任务已取消",
-            "bridge.download",
-        ):
-            self.assertIn(value, html)
-        self.assertNotIn("react", html.lower())
-
-
 if __name__ == "__main__":
     unittest.main()

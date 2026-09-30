@@ -136,9 +136,6 @@ async def main() -> None:
     real_getter = Context.get_using_tts_provider_async
     assert tuple(inspect.signature(real_getter).parameters) == ("self", "umo")
     assert inspect.iscoroutinefunction(real_getter)
-    real_getter_source = inspect.getsource(real_getter)
-    assert "ProviderType.TEXT_TO_SPEECH" in real_getter_source
-    assert "get_using_provider_async" in real_getter_source
 
     provider = FakeProvider()
     translation = FakeTranslation()

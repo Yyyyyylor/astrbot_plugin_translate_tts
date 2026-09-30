@@ -79,7 +79,7 @@
     },
     "enable_proactive_compat": {
         "type": "bool",
-        "description": "Enable compatibility with astrbot_plugin_proactive_chat",
+        "description": "Enable proactive_chat and private_companion TTS compatibility",
         "default": true
     },
     "custom_prompts_enabled": {"type":"bool","description":"Enable custom translation and emotion prompts","default":false},

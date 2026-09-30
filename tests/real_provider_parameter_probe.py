@@ -117,9 +117,7 @@ async def run_probe() -> None:
     )
     await prepared.provider.get_audio(prepared.text)
     assert FishClient.captured[2]["headers"]["model"] == "s2.1-pro-free"
-    assert ormsgpack.unpackb(FishClient.captured[2]["content"])["text"] == (
-        "[nostalgic][whispering][sighing] 訳文"
-    )
+    assert ormsgpack.unpackb(FishClient.captured[2]["content"])["text"] == prepared.text
     assert fish.headers == {"Authorization": "Bearer fake"}
 
     eleven = ProviderElevenLabsTTSAPI.__new__(ProviderElevenLabsTTSAPI)

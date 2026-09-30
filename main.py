@@ -13,6 +13,7 @@ from astrbot.api.star import Context, Star
 
 from .admin import is_dashboard_admin
 from .compat.astrbot_4_27 import NormalPipelineAdapter, install_astrbot_4_27_adapter
+from .compat.private_companion import PrivateCompanionAdapter
 from .compat.proactive_chat import ProactiveChatAdapter
 from .config import ConfigurationError, TranslationSettings
 from .diagnostics import DiagnosticRecorder
@@ -102,6 +103,9 @@ class TranslateTTSPlugin(Star):
         self.proactive_adapter = ProactiveChatAdapter(
             self, self.translation_service, logger=logger
         )
+        self.private_companion_adapter = PrivateCompanionAdapter(
+            self, self.translation_service, logger=logger
+        )
         if configuration_valid and self.settings.enabled:
             try:
                 install_astrbot_4_27_adapter(
@@ -126,18 +130,21 @@ class TranslateTTSPlugin(Star):
             )
             self.normal_adapter.mark_disabled(reason)
             self.proactive_adapter.mark_disabled(reason)
+            self.private_companion_adapter.mark_disabled()
         self._register_web_apis()
 
     async def initialize(self) -> None:
-        """Discover proactive_chat instances that loaded before this plugin."""
+        """Discover supported proactive plugins loaded before this plugin."""
         if (
             self.settings.enabled
             and self.settings.enable_proactive_compat
             and self.translation_service._active
         ):
             self.proactive_adapter.refresh_from_registry()
+            self.private_companion_adapter.refresh_from_registry()
         else:
             self.proactive_adapter.mark_disabled()
+            self.private_companion_adapter.mark_disabled()
         if self.audio_registry is not None and self.settings.auto_cleanup_tts_files:
             self.cleanup_scheduler = CleanupScheduler(
                 self.audio_registry,
@@ -152,24 +159,28 @@ class TranslateTTSPlugin(Star):
         return {
             "normal": self.normal_adapter.status,
             "proactive": self.proactive_adapter.status,
+            "private_companion": self.private_companion_adapter.status,
         }
 
     @filter.on_plugin_loaded()
     async def on_plugin_loaded(self, metadata) -> None:
-        """Adapt proactive_chat when it loads after this plugin."""
+        """Adapt supported proactive plugins loaded after this plugin."""
         if self.settings.enabled and self.settings.enable_proactive_compat:
             self.proactive_adapter.handle_plugin_loaded(metadata)
+            self.private_companion_adapter.handle_plugin_loaded(metadata)
 
     @filter.on_plugin_unloaded()
     async def on_plugin_unloaded(self, metadata) -> None:
-        """Drop patches as soon as the adapted proactive instance unloads."""
+        """Drop patches as soon as an adapted proactive instance unloads."""
         self.proactive_adapter.handle_plugin_unloaded(metadata)
+        self.private_companion_adapter.handle_plugin_unloaded(metadata)
 
     async def terminate(self) -> None:
         """Stop accepting new translation work during unload or reload."""
         self.diagnostics.emit("plugin_terminating")
         self.translation_service.close()
         self.proactive_adapter.close()
+        self.private_companion_adapter.close()
         self.normal_adapter.close()
         self._confirmations.clear()
         self._downloads.clear()

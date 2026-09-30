@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-09-30
+
+### Added
+
+- Adapt Private Companion v6.6.2 proactive delivery and explicit voice actions through the existing translation and TTS proxy, preserving its own triggers, message chain, and delivery fallbacks.
+
+### Changed
+
+- The existing `enable_proactive_compat` switch now also controls Private Companion compatibility; runtime status and bilingual configuration descriptions cover both proactive plugins.
+- Remove obsolete or redundant test assertions and update the Fish provider probe to verify the current request serialization contract.
+
+### Validation
+
+- 102 offline tests, Ruff checks, and the real AstrBot provider parameter probe using fake transports passed. Live QQ delivery and real LLM/TTS synthesis remain unverified.
+
 ## [1.3.0] - 2026-09-17
 
 ### Added
@@ -122,7 +137,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - No source text, translated text, or credentials are intentionally written to plugin logs or persistent storage.
 - Runtime adapters are limited by owner, task, session, source path, and active patch generation.
 
-[Unreleased]: https://github.com/Yyyyyylor/astrbot_plugin_translate_tts/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/Yyyyyylor/astrbot_plugin_translate_tts/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/Yyyyyylor/astrbot_plugin_translate_tts/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/Yyyyyylor/astrbot_plugin_translate_tts/compare/v1.2.2...v1.3.0
 [1.2.2]: https://github.com/Yyyyyylor/astrbot_plugin_translate_tts/compare/v1.2.1...v1.2.2
 [1.2.1]: https://github.com/Yyyyyylor/astrbot_plugin_translate_tts/compare/v1.2.0...v1.2.1

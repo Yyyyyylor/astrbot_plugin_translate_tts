@@ -76,8 +76,8 @@
             "hint": "Limits simultaneous translation requests for this plugin instance."
         },
         "enable_proactive_compat": {
-            "description": "Enable proactive-chat compatibility",
-            "hint": "Enables translation for the TTS path in astrbot_plugin_proactive_chat v1.2.5."
+            "description": "Enable proactive TTS compatibility",
+            "hint": "Enables translation for existing TTS calls in proactive_chat v1.2.5 and private_companion v6.6.2."
         },
         "custom_prompts_enabled": {
             "description": "Enable custom prompts"
