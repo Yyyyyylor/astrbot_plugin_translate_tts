@@ -1,4 +1,4 @@
-"""Offline probe of AstrBot 4.27.5 provider request serialization.
+"""Offline probe of AstrBot 4.27/4.28 provider request serialization.
 
 Run with AstrBot's embedded Python and ``PYTHONPATH`` containing both the
 AstrBot backend app directory and this package's parent directory. No network,
@@ -103,7 +103,7 @@ async def run_probe() -> None:
     fish = ProviderFishAudioTTSAPI.__new__(ProviderFishAudioTTSAPI)
     fish.provider_config = {"id": "fish", "type": "fishaudio_tts_api"}
     fish.model_name = "s2-pro"
-    fish.headers = {"Authorization": "Bearer fake"}
+    fish.headers = {"Authorization": "Bearer fake", "User-Agent": "probe-agent"}
     fish.api_base = "https://api.fish.audio/v1"
     fish.timeout = 1
     fish.proxy = ""
@@ -117,8 +117,9 @@ async def run_probe() -> None:
     )
     await prepared.provider.get_audio(prepared.text)
     assert FishClient.captured[2]["headers"]["model"] == "s2.1-pro-free"
+    assert FishClient.captured[2]["headers"]["User-Agent"] == "probe-agent"
     assert ormsgpack.unpackb(FishClient.captured[2]["content"])["text"] == prepared.text
-    assert fish.headers == {"Authorization": "Bearer fake"}
+    assert fish.headers == {"Authorization": "Bearer fake", "User-Agent": "probe-agent"}
 
     eleven = ProviderElevenLabsTTSAPI.__new__(ProviderElevenLabsTTSAPI)
     eleven.provider_config = {"id": "eleven", "type": "elevenlabs_tts_api"}

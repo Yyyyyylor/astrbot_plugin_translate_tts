@@ -10,18 +10,19 @@ Translate TTS 只改写“原有 AstrBot 链路已经决定送入 TTS”的文�
 
 | 组件 | 支持基线 | 当前证据 |
 | --- | --- | --- |
-| AstrBot | `>=4.27.5,<4.28`，按 4.27.5 实现 | 单元测试，以及使用假翻译服务和假 TTS provider 的 4.27.5 只读源码/集成探针 |
+| AstrBot | `>=4.27.5,<4.29`，核对 4.27.5、4.28.1、4.28.2 | 单元测试及固定源码集成探针；已用假翻译/TTS 服务离线执行 4.28.2 真实装饰阶段和 getter |
 | 平台 | `qq_official` | 本机配置快照中只有一个已启用的 `qq_official` 平台；尚未验证真实 QQ 送达和播放 |
 | 回答模式 | 非流式 | 已做单元测试；流式结果会主动透传 |
 | `astrbot_plugin_proactive_chat` | 仅 v1.2.5；参考 commit `d1203524f29be248a4975bac1f7586e9557434ee` | 本机磁盘源码全部匹配固定指纹；当前没有可核验的已加载运行实例 |
 | `astrbot_plugin_proactive_chat` | 仅 v1.2.6；调研 commit `635fc18eeb84e3c7b58661425359244552286835` | 使用假翻译、TTS 和投递接口离线执行上游发送方法；真实送达与播放尚未验证 |
 | `astrbot_plugin_private_companion` | 仅 v6.6.2；调研 commit `2313fd12e1bd9b72f6db9aca17cde4359102341e` | 仅完成离线契约测试；已加载源码、平台送达与播放均未核验 |
-| LLM/TTS provider | AstrBot 已配置实例；Fish、ElevenLabs v3、MiniMax Speech 02/2.6、Gemini TTS 情感适配 | 已用假 transport 对真实 4.27.5 provider 序列化离线验证；尚未真实合成和试听 |
+| LLM/TTS provider | AstrBot 已配置实例；Fish、ElevenLabs v3、MiniMax Speech 02/2.6、Gemini TTS 情感适配 | 已用假 transport 对真实 4.27.5 和 4.28.2 provider 序列化离线验证；尚未真实合成和试听 |
 
 精确运行状态、源码探针和真实环境验收清单见[兼容性与诊断](docs/compatibility.md)。
 
 Private Companion 适配已包含在 v1.4.0 中。
 v1.4.1 新增 Proactive Chat v1.2.6 适配，同时保留 v1.2.5 支持。
+v1.4.2 支持 AstrBot 4.28.1/4.28.2，最低版本仍为 4.27.5；普通链路诊断会报告当前加载的 AstrBot 版本。
 
 以上本机检查是 2026-09-06 的离线快照：未发现 AstrBot/Python/uvicorn 后端进程，Translate TTS 也尚未安装到实际插件目录。因此，它不能证明运行时包装已启用，更不能证明 QQ、模型或 TTS 的实际行为。
 
@@ -42,7 +43,7 @@ v1.4.1 新增 Proactive Chat v1.2.6 适配，同时保留 v1.2.5 支持。
 
 ## 安装
 
-1. 从 [v1.4.1 Release](https://github.com/Yyyyyylor/astrbot_plugin_translate_tts/releases/tag/v1.4.1) 下载 `astrbot_plugin_translate_tts-1.4.1.zip`。
+1. 从 [v1.4.2 Release](https://github.com/Yyyyyylor/astrbot_plugin_translate_tts/releases/tag/v1.4.2) 下载 `astrbot_plugin_translate_tts-1.4.2.zip`。
 2. 在 AstrBot WebUI 的插件管理器中安装该 ZIP，或将 ZIP 根目录中的文件解压到 `AstrBot/data/plugins/astrbot_plugin_translate_tts`。
 3. 不要把本开发工作区中的 `data`、`temp`、缓存、数据库或配置产物复制到生产环境；文档和测试文件不是运行必需项。
 4. 启动 AstrBot，或在 **WebUI > 插件** 中重载。

@@ -10,18 +10,19 @@ The plugin does **not** add speech triggers, replace the chat response, mutate s
 
 | Component | Supported baseline | Current evidence |
 | --- | --- | --- |
-| AstrBot | `>=4.27.5,<4.28`; implemented against 4.27.5 | Unit tests plus a read-only 4.27.5 source/integration probe with fake translation and TTS providers |
+| AstrBot | `>=4.27.5,<4.29`; inspected 4.27.5, 4.28.1, and 4.28.2 | Unit tests plus the pinned-source integration probe with fake translation and TTS providers; 4.28.2 real stage/getter exercised offline |
 | Platform | `qq_official` | The local configuration snapshot contains one enabled `qq_official` platform; live QQ delivery and playback have not been tested |
 | Reply mode | Non-streaming | Unit tested; streaming results intentionally pass through |
 | `astrbot_plugin_proactive_chat` | Exactly v1.2.5; reference commit `d1203524f29be248a4975bac1f7586e9557434ee` | The local on-disk source matches all pinned fingerprints; no loaded runtime instance was available to inspect |
 | `astrbot_plugin_proactive_chat` | Exactly v1.2.6; inspected commit `635fc18eeb84e3c7b58661425359244552286835` | Upstream sender exercised offline with fake translation, TTS, and delivery; live delivery and playback remain unverified |
 | `astrbot_plugin_private_companion` | Exactly v6.6.2; inspected commit `2313fd12e1bd9b72f6db9aca17cde4359102341e` | Offline contract tests only; loaded source, platform delivery, and playback remain unverified |
-| LLM/TTS providers | Configured AstrBot instances; emotion adapters for Fish, ElevenLabs v3, MiniMax Speech 02/2.6, and Gemini TTS | Real 4.27.5 provider serialization tested offline with fake transports; real synthesis and listening remain untested |
+| LLM/TTS providers | Configured AstrBot instances; emotion adapters for Fish, ElevenLabs v3, MiniMax Speech 02/2.6, and Gemini TTS | Real 4.27.5 and 4.28.2 provider serialization tested offline with fake transports; real synthesis and listening remain untested |
 
 See [Compatibility and diagnostics](docs/compatibility.md) for exact runtime states, source probes, and the live acceptance checklist.
 
 Private Companion compatibility is included in v1.4.0.
 Proactive Chat v1.2.6 compatibility is included in v1.4.1, retaining v1.2.5 support.
+AstrBot 4.28.1/4.28.2 compatibility is included in v1.4.2; the minimum remains 4.27.5. The normal adapter reports the loaded AstrBot version in its diagnostics.
 
 The local inspection above is an offline snapshot from 2026-09-06. No AstrBot/Python/uvicorn backend process was observed, and Translate TTS was not installed in the live plugin directory. It therefore proves neither active wrapper status nor actual QQ/model/TTS behavior.
 
@@ -42,7 +43,7 @@ The visible message remains the original-language text; the translation is not d
 
 ## Installation
 
-1. Download `astrbot_plugin_translate_tts-1.4.1.zip` from the [v1.4.1 release](https://github.com/Yyyyyylor/astrbot_plugin_translate_tts/releases/tag/v1.4.1).
+1. Download `astrbot_plugin_translate_tts-1.4.2.zip` from the [v1.4.2 release](https://github.com/Yyyyyylor/astrbot_plugin_translate_tts/releases/tag/v1.4.2).
 2. In AstrBot WebUI, open the plugin manager and install the downloaded ZIP, or extract its root-level files into `AstrBot/data/plugins/astrbot_plugin_translate_tts`.
 3. Do not copy this checkout's local `data`, `temp`, cache, database, or configuration artifacts into production. Documentation and tests are optional for runtime use.
 4. Start AstrBot, or reload the plugin in **WebUI > Plugins**.

@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.4.2] - 2026-10-05
+
+### Fixed
+
+- Allow AstrBot 4.28.1/4.28.2 to load the plugin by extending the host range to `>=4.27.5,<4.29`; retain the existing 4.27.5 minimum, guarded runtime signatures, proactive adapters, and synthesis fallbacks.
+- Report the loaded AstrBot version in normal-pipeline diagnostics instead of always showing 4.27.x.
+
+### Validation
+
+- 105 offline tests and the pinned official 4.28.2 stage/getter probe passed, covering nine scenarios including original text retention, synthesis fallback, upstream TTS controls, streaming, session exclusion, and per-message reasoning display.
+- Four real 4.28.2 provider classes passed fake-transport request serialization checks, including copied Fish request headers. Live QQ delivery, real LLM/TTS calls, and audio playback remain unverified.
+
 ## [1.4.1] - 2026-09-30
 
 ### Fixed
@@ -152,7 +164,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - No source text, translated text, or credentials are intentionally written to plugin logs or persistent storage.
 - Runtime adapters are limited by owner, task, session, source path, and active patch generation.
 
-[Unreleased]: https://github.com/Yyyyyylor/astrbot_plugin_translate_tts/compare/v1.4.1...HEAD
+[Unreleased]: https://github.com/Yyyyyylor/astrbot_plugin_translate_tts/compare/v1.4.2...HEAD
+[1.4.2]: https://github.com/Yyyyyylor/astrbot_plugin_translate_tts/compare/v1.4.1...v1.4.2
 [1.4.1]: https://github.com/Yyyyyylor/astrbot_plugin_translate_tts/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/Yyyyyylor/astrbot_plugin_translate_tts/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/Yyyyyylor/astrbot_plugin_translate_tts/compare/v1.2.2...v1.3.0

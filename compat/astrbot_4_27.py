@@ -1,4 +1,4 @@
-"""AstrBot 4.27.5 normal ResultDecorateStage integration."""
+"""Shared AstrBot 4.27/4.28 normal ResultDecorateStage integration."""
 
 from __future__ import annotations
 
@@ -61,6 +61,7 @@ class NormalPipelineAdapter:
         record_type: type,
         streaming_result: Any,
         streaming_finish: Any,
+        astrbot_version: str | None = None,
     ) -> None:
         process = getattr(stage_class, "process", None)
         getter = getattr(context_class, "get_using_tts_provider_async", None)
@@ -93,8 +94,8 @@ class NormalPipelineAdapter:
             CompatibilityStatus(
                 "normal",
                 "signature_compatible_unverified",
-                "AstrBot 4.27 normal pipeline signatures are compatible",
-                "4.27.x",
+                "AstrBot normal pipeline signatures are compatible",
+                astrbot_version,
                 None,
             )
         )
@@ -334,7 +335,8 @@ def install_astrbot_4_27_adapter(
     *,
     adapter: NormalPipelineAdapter | None = None,
 ) -> NormalPipelineAdapter:
-    """Import and patch only the exact 4.27.5 integration surfaces."""
+    """Install the shared 4.27/4.28 surfaces; retain the legacy entry point."""
+    from astrbot import __version__
     from astrbot.core.message.components import Plain, Record
     from astrbot.core.message.message_event_result import ResultContentType
     from astrbot.core.pipeline.result_decorate.stage import ResultDecorateStage
@@ -350,5 +352,6 @@ def install_astrbot_4_27_adapter(
         record_type=Record,
         streaming_result=ResultContentType.STREAMING_RESULT,
         streaming_finish=ResultContentType.STREAMING_FINISH,
+        astrbot_version=__version__,
     )
     return adapter

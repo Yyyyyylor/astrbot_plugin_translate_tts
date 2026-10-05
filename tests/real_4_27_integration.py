@@ -1,7 +1,8 @@
-"""Targeted integration probe against the locally installed AstrBot 4.27.5.
+"""Targeted integration probe against pinned AstrBot 4.27.5/4.28.1/4.28.2 sources.
 
-Run with AstrBot's embedded Python and ``ASTRBOT_ROOT`` pointing at a disposable,
-writable directory. This file is deliberately outside pytest's default pattern.
+Run with AstrBot dependencies and ``ASTRBOT_ROOT`` pointing at its source.
+Runtime data is redirected to a disposable directory before importing AstrBot.
+This file is deliberately outside pytest's default pattern.
 """
 
 from __future__ import annotations
@@ -15,6 +16,7 @@ import tempfile
 from pathlib import Path
 from types import SimpleNamespace
 from typing import ClassVar
+from unittest.mock import patch
 
 PLUGIN_PARENT = Path(__file__).resolve().parents[2]
 
@@ -38,7 +40,7 @@ def _find_astrbot_app() -> Path:
         if (candidate / "astrbot" / "core" / "star" / "context.py").is_file():
             return candidate
     raise RuntimeError(
-        "AstrBot 4.27.5 source was not found; set ASTRBOT_ROOT to its repository "
+        "AstrBot source was not found; set ASTRBOT_ROOT to its repository "
         "root or backend/app directory"
     )
 
@@ -59,19 +61,24 @@ from astrbot.core.message.message_event_result import ResultContentType
 from astrbot.core.pipeline.result_decorate.stage import (
     ResultDecorateStage,
 )
+from astrbot.core.provider.provider import TTSProvider
 from astrbot.core.star.context import Context
-from astrbot.core.star.session_plugin_manager import SessionPluginManager
+from astrbot.core.star.star_manager import PluginManager
 
-from translate_tts.compat.astrbot_4_27 import NormalPipelineAdapter
+from translate_tts.compat.astrbot_4_27 import install_astrbot_4_27_adapter
 from translate_tts.config import TranslationSettings
 
 
-class FakeProvider:
+class FakeProvider(TTSProvider):
     def __init__(self) -> None:
+        super().__init__({"id": "probe", "type": "probe_tts"}, {})
         self.calls: list[str] = []
+        self.fail_translated = False
 
     async def get_audio(self, text: str) -> str:
         self.calls.append(text)
+        if self.fail_translated and text.startswith("訳:"):
+            raise ValueError("simulated target-language failure")
         return r"C:\probe\voice.wav"
 
 
@@ -100,6 +107,7 @@ class FakeEvent:
 
     def __init__(self, result):
         self.result = result
+        self.extras = {}
 
     def get_result(self):
         return self.result
@@ -111,7 +119,7 @@ class FakeEvent:
         return "qq_official"
 
     def get_extra(self, key):
-        return None
+        return self.extras.get(key)
 
 
 class Logger:
@@ -120,19 +128,32 @@ class Logger:
 
 
 async def main() -> None:
-    assert astrbot.__version__ == "4.27.5", (
-        f"expected AstrBot 4.27.5, found {astrbot.__version__}"
-    )
+    stage_hashes = {
+        "4.27.5": "C7D09174F080BE1FD4C6B1698AD99AA559EB0DCBF3E09C71C5BC33546C257A1C",
+        "4.28.1": "6FCD8891A37BE0A2318C44E4E5D64EEA4AEE443502449B327F16ADCB3689A376",
+        "4.28.2": "6FCD8891A37BE0A2318C44E4E5D64EEA4AEE443502449B327F16ADCB3689A376",
+    }
+    assert astrbot.__version__ in stage_hashes, astrbot.__version__
     stage_path = Path(inspect.getsourcefile(ResultDecorateStage) or "")
     stage_sha256 = hashlib.sha256(stage_path.read_bytes()).hexdigest().upper()
-    assert stage_sha256 == (
-        "C7D09174F080BE1FD4C6B1698AD99AA559EB0DCBF3E09C71C5BC33546C257A1C"
-    )
+    assert stage_sha256 == stage_hashes[astrbot.__version__]
     context_path = Path(inspect.getsourcefile(Context) or "")
     context_sha256 = hashlib.sha256(context_path.read_bytes()).hexdigest().upper()
     assert context_sha256 == (
         "B3B4FF6CC027743ECD6D2D739E785898CEDFC02344C2ADB9F81C63B4D66235AF"
     )
+    metadata = (PLUGIN_PARENT / "translate_tts" / "metadata.yaml").read_text(
+        encoding="utf-8"
+    )
+    version_spec = next(
+        line.split(":", 1)[1].strip().strip('"')
+        for line in metadata.splitlines()
+        if line.startswith("astrbot_version:")
+    )
+    assert PluginManager._validate_astrbot_version_specifier(version_spec)[0]
+    assert not PluginManager._validate_astrbot_version_specifier(
+        ">=4.27.5,<4.28" if astrbot.__version__.startswith("4.28.") else ">=4.29"
+    )[0]
     real_getter = Context.get_using_tts_provider_async
     assert tuple(inspect.signature(real_getter).parameters) == ("self", "umo")
     assert inspect.iscoroutinefunction(real_getter)
@@ -142,28 +163,19 @@ async def main() -> None:
     context = Context.__new__(Context)
     plugin = SimpleNamespace(context=context, settings=TranslationSettings())
 
-    original_getter = real_getter
-    original_enablement = SessionPluginManager.is_plugin_enabled_for_session
+    getter_calls = []
 
-    async def fake_getter(self, umo=None):
+    async def selected_provider(*, provider_type, umo):
+        getter_calls.append(umo)
         return provider
 
-    async def enabled(umo, plugin_name):
-        return True
-
-    Context.get_using_tts_provider_async = fake_getter
-    SessionPluginManager.is_plugin_enabled_for_session = staticmethod(enabled)
-    adapter = NormalPipelineAdapter(plugin, translation, logger=Logger())
+    context.provider_manager = SimpleNamespace(
+        get_using_provider_async=selected_provider,
+        tts_provider_insts=[provider],
+    )
+    adapter = install_astrbot_4_27_adapter(plugin, translation, Logger())
+    assert adapter.status.version == astrbot.__version__
     try:
-        adapter.install(
-            stage_class=ResultDecorateStage,
-            context_class=Context,
-            session_plugin_manager=SessionPluginManager,
-            plain_type=Plain,
-            record_type=Record,
-            streaming_result=ResultContentType.STREAMING_RESULT,
-            streaming_finish=ResultContentType.STREAMING_FINISH,
-        )
         config = {
             "provider_tts_settings": {
                 "enable": True,
@@ -188,24 +200,71 @@ async def main() -> None:
         stage.reply_with_mention = False
         stage.reply_with_quote = False
 
-        original = Plain("原文")
-        event = FakeEvent(FakeResult([original]))
+        scenarios = 0
+        for dual_output in (False, True):
+            config["provider_tts_settings"]["dual_output"] = dual_output
+            provider.calls.clear()
+            translation.calls.clear()
+            original = Plain("原文")
+            event = FakeEvent(FakeResult([original]))
+            async for _ in stage.process(event):
+                pass
+            assert provider.calls == ["訳:原文"]
+            assert translation.calls == [("原文", event.unified_msg_origin)]
+            assert len(event.result.chain) == 2
+            assert isinstance(event.result.chain[0], Record)
+            assert event.result.chain[1] is original
+            scenarios += 1
+
+        provider.fail_translated = True
+        provider.calls.clear()
+        event = FakeEvent(FakeResult([Plain("原文")]))
         async for _ in stage.process(event):
             pass
-
-        assert provider.calls == ["訳:原文"]
-        assert translation.calls == [("原文", "qq_official:FriendMessage:integration")]
+        assert provider.calls == ["訳:原文", "原文"]
         assert len(event.result.chain) == 2
-        assert isinstance(event.result.chain[0], Record)
-        assert event.result.chain[1] is original
+        provider.fail_translated = False
+        scenarios += 1
+
+        for mode in ("disabled", "probability", "session", "streaming"):
+            provider.calls.clear()
+            translation.calls.clear()
+            event = FakeEvent(FakeResult([Plain("原文")]))
+            config["provider_tts_settings"]["enable"] = mode != "disabled"
+            stage.tts_trigger_probability = 0.0 if mode == "probability" else 1.0
+            if mode == "session":
+                event.plugins_name = []
+            if mode == "streaming":
+                event.result.result_content_type = ResultContentType.STREAMING_RESULT
+            with patch("random.random", return_value=0.5):
+                async for _ in stage.process(event):
+                    pass
+            assert not translation.calls
+            assert len(provider.calls) == (1 if mode == "session" else 0)
+            scenarios += 1
+
+        if astrbot.__version__.startswith("4.28."):
+            stage.show_reasoning = True
+            for enabled_reasoning in (False, True):
+                event = FakeEvent(FakeResult([Plain("原文")]))
+                event.extras = {
+                    "enable_reasoning": enabled_reasoning,
+                    "_llm_reasoning_content": "reasoning",
+                }
+                config["provider_tts_settings"]["enable"] = False
+                async for _ in stage.process(event):
+                    pass
+                assert len(event.result.chain) == (2 if enabled_reasoning else 1)
+                scenarios += 1
+
+        assert getter_calls
         print(
-            "AstrBot 4.27.5 ResultDecorateStage integration: PASS "
-            f"(stage SHA256 {stage_sha256}; context SHA256 {context_sha256})"
+            f"AstrBot {astrbot.__version__} real stage/getter: PASS ({scenarios} scenarios; "
+            f"stage SHA256 {stage_sha256}; context SHA256 {context_sha256})"
         )
     finally:
         adapter.close()
-        Context.get_using_tts_provider_async = original_getter
-        SessionPluginManager.is_plugin_enabled_for_session = original_enablement
+        assert Context.get_using_tts_provider_async is real_getter
 
 
 if __name__ == "__main__":

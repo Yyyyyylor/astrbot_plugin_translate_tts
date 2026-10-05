@@ -14,7 +14,7 @@ This document separates runtime signature compatibility, pinned-source verificat
 
 | Path | Supported baseline | Required runtime surface | Unsupported/degraded behavior |
 | --- | --- | --- | --- |
-| Normal reply | AstrBot 4.27.5, non-streaming | Async-generator `ResultDecorateStage.process(self, event)` and async `Context.get_using_tts_provider_async(self, umo)` | Streaming replies pass through. Signature mismatch disables the normal adapter. |
+| Normal reply | AstrBot `>=4.27.5,<4.29`; inspected 4.27.5/4.28.1/4.28.2, non-streaming | Async-generator `ResultDecorateStage.process(self, event)` and async `Context.get_using_tts_provider_async(self, umo)` | Streaming replies pass through. Signature mismatch disables the normal adapter. |
 | Proactive reply v1.2.5 | `astrbot_plugin_proactive_chat` v1.2.5, reference commit `d1203524f29be248a4975bac1f7586e9557434ee` | Async bound `_send_proactive_message(session_id, text)`, synchronous bound `_get_session_config(session_id)`, and synchronous `Context.get_using_tts_provider(self, umo)` | Missing/inactive reports `not_installed`; unsupported versions or signature mismatches report `incompatible`. |
 | Proactive reply v1.2.6 | `astrbot_plugin_proactive_chat` v1.2.6, inspected commit `635fc18eeb84e3c7b58661425359244552286835` | Async bound `_send_proactive_message(session_id, text, event=None, initial_chain=None)` returning `bool`; the same synchronous config and TTS getter as v1.2.5 | Arguments and delivery result pass through; only the inspected versions are accepted. |
 | Private Companion proactive delivery | `astrbot_plugin_private_companion` v6.6.2, inspected commit `2313fd12e1bd9b72f6db9aca17cde4359102341e` | Async bound `_send_chain_components(umo, chain, *, apply_decorating_hooks=True)`, `_create_voice_record_component(target, spoken_text, *, defer_local_playback=False)`, and `_tts_generate_audio_path(tts_provider, text)` | Other versions or signature mismatches fail closed. Only existing TTS calls are translated; no new voice trigger is added. |
@@ -35,7 +35,15 @@ OpenAI, Azure, Edge, DashScope, VolcEngine, MiMo, GSVI, Genie, unknown types, an
 
 Fish S2/S2.1 accepts square-bracket natural-language directions and S1 accepts a fixed parenthesized vocabulary. The plugin permits S2's fine-grained control only after structural validation: directions must be concise English text without wrappers, are limited to 96 characters, are deduplicated, and are capped at the documented recommendation of three per controlled span. S1 continues to reject cues outside its fixed documented set.
 
-`metadata.yaml` declares `astrbot_version: ">=4.27.5,<4.28"`, only `qq_official`, and the project repository `https://github.com/Yyyyyylor/astrbot_plugin_translate_tts`.
+`metadata.yaml` declares `astrbot_version: ">=4.27.5,<4.29"`, only `qq_official`, and the project repository `https://github.com/Yyyyyylor/astrbot_plugin_translate_tts`.
+
+## AstrBot 4.28 compatibility (v1.4.2)
+
+Issue #1 requests AstrBot 4.28.1 support without a traceback or reproduction steps. The prior `>=4.27.5,<4.28` metadata range rejects both 4.28.1 and 4.28.2 in AstrBot's plugin loader. The new range retains 4.27.5 and permits the 4.28 series; signature guards still disable incompatible runtime surfaces.
+
+Checked official v4.28.2 commit `3c7adafa1397e182d60b1016bf88759265113c8a`. `Context` and the normal TTS call/trigger/output contract remain compatible. The decoration stage now honors the per-message `enable_reasoning` flag; provider classes add request headers including User-Agent. Existing wrappers preserve those upstream behaviors and copied Fish headers. The v4.28.1-to-v4.28.2 diff does not change these integration surfaces. [Official stage](https://github.com/AstrBotDevs/AstrBot/blob/v4.28.2/astrbot/core/pipeline/result_decorate/stage.py), [official provider headers](https://github.com/AstrBotDevs/AstrBot/blob/v4.28.2/astrbot/core/provider/headers.py).
+
+On 2026-10-05, the real 4.28.2 stage and Context getter passed nine offline scenarios, and the four real provider classes passed the fake-transport serialization probe. Runtime data was isolated in a disposable directory. The normal adapter now reports the actual loaded AstrBot version; its state remains `signature_compatible_unverified`, which does not claim source identity or live delivery. Proactive Chat v1.2.5/v1.2.6 and Private Companion v6.6.2 retain their existing adapters and offline contract coverage. Live QQ delivery, real LLM/TTS requests, and playback remain unverified.
 
 ## Local offline inspection snapshot
 
@@ -96,7 +104,7 @@ The authoritative defaults are in `_conf_schema.json`; the complete operator-fac
 
 ## Read-only source and integration probes
 
-### AstrBot 4.27.5
+### AstrBot 4.27.5 / 4.28.1 / 4.28.2
 
 Run with AstrBot's embedded Python and a disposable writable runtime location:
 
@@ -106,7 +114,7 @@ $env:ASTRBOT_PROBE_RUNTIME_ROOT = "$env:TEMP\translate-tts-probe"
 C:\path\to\AstrBot\backend\python\python.exe tests\real_4_27_integration.py
 ```
 
-The probe requires `astrbot.__version__ == "4.27.5"`, verifies fixed SHA-256 fingerprints for `ResultDecorateStage` and `Context`, checks the getter shape, and exercises the real decoration stage with a fake translator and fake TTS provider. It does not call a model, synthesize audio, upload media, or send QQ messages. Do not use a live data directory for `ASTRBOT_PROBE_RUNTIME_ROOT`.
+The legacy-named probe accepts pinned AstrBot 4.27.5, 4.28.1, and 4.28.2 sources, verifies fixed SHA-256 fingerprints for `ResultDecorateStage` and `Context`, validates the metadata range with the real plugin loader, and exercises the real decoration stage and Context getter with fake translation and provider-manager boundaries. It checks voice-only/dual output, original-language fallback, disabled TTS, trigger probability, session plugin exclusion, streaming pass-through, and (on 4.28) per-message reasoning display. It does not call a model, synthesize audio, upload media, or send QQ messages. Do not use a live data directory for `ASTRBOT_PROBE_RUNTIME_ROOT`.
 
 ### proactive-chat v1.2.5 reference source
 
@@ -145,7 +153,7 @@ Automated tests do not establish translation quality, spoken-language accuracy, 
 
 These checks require a disposable test conversation, explicit user authorization, credentials, network access, configured real LLM/TTS providers, and the user's actual proactive-chat or private-companion installation. Do not send a live message without explicit authorization.
 
-1. Record AstrBot 4.27.5, QQ Official adapter type (including Webhook use), plugin versions/source, provider IDs, TTS model/voice, and target language without secrets.
+1. Record the supported AstrBot version, QQ Official adapter type (including Webhook use), plugin versions/source, provider IDs, TTS model/voice, and target language without secrets.
 2. In private chat, exercise a normal reply with upstream voice-only output and verify exactly one original-language text plus one playable Japanese audio message.
 3. Repeat in an enabled test group and verify actual delivery/playback, not only internal return values.
 4. Repeat normal, proactive-chat, and private-companion paths with upstream text/dual output enabled; confirm original text appears exactly once. For private-companion also check its explicit voice action and a saved delivery UMO.
