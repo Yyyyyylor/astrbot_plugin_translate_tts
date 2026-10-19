@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-10-19
+
+### Fixed
+
+- Allow AstrBot 4.29.1 to load the plugin by extending the host range to `>=4.27.5,<4.30`; retain the existing minimum, runtime signature guards, proactive-chat/private-companion adapters, user configuration, and synthesis fallbacks.
+
+### Changed
+
+- Add the official v4.29.1 stage/Context fingerprints to the isolated integration probe and support Fish's new async HTTP client lifecycle in the fake-transport probe.
+- Document the verified TTS/LLM/event interfaces and WebUI Views compatibility aliases; update bilingual installation links to v1.5.0.
+
+### Validation
+
+- 105 offline tests, Ruff checks, nine scenarios executing the official v4.29.1 stage/getter and metadata validator, and four real provider classes using fake transports passed.
+- No deployed 4.29.1 host or live WebUI/platform integration, real LLM/TTS calls, QQ delivery, or audio playback was tested.
+
 ## [1.4.2] - 2026-10-05
 
 ### Fixed

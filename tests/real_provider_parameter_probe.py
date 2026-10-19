@@ -1,4 +1,4 @@
-"""Offline probe of AstrBot 4.27/4.28 provider request serialization.
+"""Offline probe of AstrBot 4.27–4.29 provider request serialization.
 
 Run with AstrBot's embedded Python and ``PYTHONPATH`` containing both the
 AstrBot backend app directory and this package's parent directory. No network,
@@ -52,6 +52,12 @@ class FishClient:
 
     def __init__(self, **kwargs):
         self.kwargs = kwargs
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *args):
+        return False
 
     def stream(self, method, path, **kwargs):
         FishClient.captured = (method, path, kwargs)

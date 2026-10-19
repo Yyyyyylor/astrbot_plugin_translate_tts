@@ -1,4 +1,4 @@
-"""Shared AstrBot 4.27/4.28 normal ResultDecorateStage integration."""
+"""Shared AstrBot 4.27–4.29 normal ResultDecorateStage integration."""
 
 from __future__ import annotations
 
@@ -335,7 +335,7 @@ def install_astrbot_4_27_adapter(
     *,
     adapter: NormalPipelineAdapter | None = None,
 ) -> NormalPipelineAdapter:
-    """Install the shared 4.27/4.28 surfaces; retain the legacy entry point."""
+    """Install the shared 4.27–4.29 surfaces; retain the legacy entry point."""
     from astrbot import __version__
     from astrbot.core.message.components import Plain, Record
     from astrbot.core.message.message_event_result import ResultContentType

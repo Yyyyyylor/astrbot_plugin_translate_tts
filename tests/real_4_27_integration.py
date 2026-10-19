@@ -1,4 +1,4 @@
-"""Targeted integration probe against pinned AstrBot 4.27.5/4.28.1/4.28.2 sources.
+"""Targeted integration probe against pinned AstrBot 4.27/4.28/4.29 sources.
 
 Run with AstrBot dependencies and ``ASTRBOT_ROOT`` pointing at its source.
 Runtime data is redirected to a disposable directory before importing AstrBot.
@@ -132,15 +132,25 @@ async def main() -> None:
         "4.27.5": "C7D09174F080BE1FD4C6B1698AD99AA559EB0DCBF3E09C71C5BC33546C257A1C",
         "4.28.1": "6FCD8891A37BE0A2318C44E4E5D64EEA4AEE443502449B327F16ADCB3689A376",
         "4.28.2": "6FCD8891A37BE0A2318C44E4E5D64EEA4AEE443502449B327F16ADCB3689A376",
+        "4.29.1": "24ACFF446A409640B592129BB047111EAC4D23B6C9383D96664EFBD0525231F6",
     }
     assert astrbot.__version__ in stage_hashes, astrbot.__version__
     stage_path = Path(inspect.getsourcefile(ResultDecorateStage) or "")
-    stage_sha256 = hashlib.sha256(stage_path.read_bytes()).hexdigest().upper()
-    assert stage_sha256 == stage_hashes[astrbot.__version__]
+    # Existing baselines fingerprint Windows checkout bytes. New baselines use
+    # Git's LF content so a fresh checkout works on either operating system.
+    stage_bytes = stage_path.read_bytes()
     context_path = Path(inspect.getsourcefile(Context) or "")
-    context_sha256 = hashlib.sha256(context_path.read_bytes()).hexdigest().upper()
+    context_bytes = context_path.read_bytes()
+    if astrbot.__version__ == "4.29.1":
+        stage_bytes = stage_bytes.replace(b"\r\n", b"\n")
+        context_bytes = context_bytes.replace(b"\r\n", b"\n")
+    stage_sha256 = hashlib.sha256(stage_bytes).hexdigest().upper()
+    assert stage_sha256 == stage_hashes[astrbot.__version__]
+    context_sha256 = hashlib.sha256(context_bytes).hexdigest().upper()
     assert context_sha256 == (
-        "B3B4FF6CC027743ECD6D2D739E785898CEDFC02344C2ADB9F81C63B4D66235AF"
+        "10F5F5DD40491564EE196854ABB5F6A4E4E6FC46A6C5E62E29935E2C53B6294F"
+        if astrbot.__version__ == "4.29.1"
+        else "B3B4FF6CC027743ECD6D2D739E785898CEDFC02344C2ADB9F81C63B4D66235AF"
     )
     metadata = (PLUGIN_PARENT / "translate_tts" / "metadata.yaml").read_text(
         encoding="utf-8"
@@ -152,7 +162,7 @@ async def main() -> None:
     )
     assert PluginManager._validate_astrbot_version_specifier(version_spec)[0]
     assert not PluginManager._validate_astrbot_version_specifier(
-        ">=4.27.5,<4.28" if astrbot.__version__.startswith("4.28.") else ">=4.29"
+        "<" + astrbot.__version__
     )[0]
     real_getter = Context.get_using_tts_provider_async
     assert tuple(inspect.signature(real_getter).parameters) == ("self", "umo")
@@ -243,7 +253,7 @@ async def main() -> None:
             assert len(provider.calls) == (1 if mode == "session" else 0)
             scenarios += 1
 
-        if astrbot.__version__.startswith("4.28."):
+        if astrbot.__version__ != "4.27.5":
             stage.show_reasoning = True
             for enabled_reasoning in (False, True):
                 event = FakeEvent(FakeResult([Plain("原文")]))
