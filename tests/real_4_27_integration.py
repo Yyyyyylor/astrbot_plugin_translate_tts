@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import inspect
+import json
 import os
 import sys
 import tempfile
@@ -67,6 +68,8 @@ from astrbot.core.star.star_manager import PluginManager
 
 from translate_tts.compat.astrbot_4_27 import install_astrbot_4_27_adapter
 from translate_tts.config import TranslationSettings
+from translate_tts.diagnostics import DiagnosticRecorder
+from translate_tts.translation import TranslationService
 
 
 class FakeProvider(TTSProvider):
@@ -127,12 +130,86 @@ class Logger:
         pass
 
 
+async def probe_fenced_translation(stage, context, provider, adapter) -> None:
+    import httpx
+    from astrbot.core.provider.entities import ProviderType
+    from astrbot.core.provider.sources.openai_source import ProviderOpenAIOfficial
+
+    requests = []
+
+    def respond(request):
+        requests.append(json.loads(request.content))
+        return httpx.Response(
+            200,
+            json={
+                "id": "probe",
+                "object": "chat.completion",
+                "created": 0,
+                "model": "probe-chat",
+                "choices": [
+                    {
+                        "index": 0,
+                        "finish_reason": "stop",
+                        "message": {
+                            "role": "assistant",
+                            "content": '```json\n{"text":"こんにちは","emotion":"neutral"}\n```',
+                        },
+                    }
+                ],
+            },
+        )
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as client:
+        with patch.object(
+            ProviderOpenAIOfficial, "_create_http_client", return_value=client
+        ):
+            chat = ProviderOpenAIOfficial(
+                {
+                    "id": "chat",
+                    "type": "openai_chat_completion",
+                    "model": "probe-chat",
+                    "key": ["offline"],
+                    "api_base": "https://probe.invalid/v1",
+                },
+                {},
+            )
+
+        async def using_provider(*, provider_type, umo):
+            assert umo == FakeEvent.unified_msg_origin
+            return chat if provider_type == ProviderType.CHAT_COMPLETION else provider
+
+        async def provider_by_id(provider_id):
+            return {"chat": chat}[provider_id]
+
+        context.provider_manager.get_using_provider_async = using_provider
+        context.provider_manager.get_provider_by_id = provider_by_id
+        context.provider_manager.inst_map = {"chat": chat}
+        diagnostics = DiagnosticRecorder(Logger())
+        adapter.service = TranslationService(context, diagnostics=diagnostics)
+        stage.ctx.astrbot_config["provider_tts_settings"]["enable"] = True
+        provider.calls.clear()
+        original = Plain("原文")
+        event = FakeEvent(FakeResult([original]))
+        async for _ in stage.process(event):
+            pass
+        assert provider.calls == ["こんにちは"], diagnostics.snapshot()
+        assert isinstance(event.result.chain[0], Record)
+        assert event.result.chain[1:] == [original]
+        assert len(requests) == 1
+        assert [message["role"] for message in requests[0]["messages"]] == [
+            "system",
+            "user",
+        ]
+        assert not requests[0].get("tools")
+
+
 async def main() -> None:
     stage_hashes = {
         "4.27.5": "C7D09174F080BE1FD4C6B1698AD99AA559EB0DCBF3E09C71C5BC33546C257A1C",
         "4.28.1": "6FCD8891A37BE0A2318C44E4E5D64EEA4AEE443502449B327F16ADCB3689A376",
         "4.28.2": "6FCD8891A37BE0A2318C44E4E5D64EEA4AEE443502449B327F16ADCB3689A376",
         "4.29.1": "24ACFF446A409640B592129BB047111EAC4D23B6C9383D96664EFBD0525231F6",
+        "4.29.4": "24ACFF446A409640B592129BB047111EAC4D23B6C9383D96664EFBD0525231F6",
     }
     assert astrbot.__version__ in stage_hashes, astrbot.__version__
     stage_path = Path(inspect.getsourcefile(ResultDecorateStage) or "")
@@ -141,16 +218,19 @@ async def main() -> None:
     stage_bytes = stage_path.read_bytes()
     context_path = Path(inspect.getsourcefile(Context) or "")
     context_bytes = context_path.read_bytes()
-    if astrbot.__version__ == "4.29.1":
+    if astrbot.__version__ in {"4.29.1", "4.29.4"}:
         stage_bytes = stage_bytes.replace(b"\r\n", b"\n")
         context_bytes = context_bytes.replace(b"\r\n", b"\n")
     stage_sha256 = hashlib.sha256(stage_bytes).hexdigest().upper()
     assert stage_sha256 == stage_hashes[astrbot.__version__]
     context_sha256 = hashlib.sha256(context_bytes).hexdigest().upper()
-    assert context_sha256 == (
-        "10F5F5DD40491564EE196854ABB5F6A4E4E6FC46A6C5E62E29935E2C53B6294F"
-        if astrbot.__version__ == "4.29.1"
-        else "B3B4FF6CC027743ECD6D2D739E785898CEDFC02344C2ADB9F81C63B4D66235AF"
+    context_hashes = {
+        "4.29.1": "10F5F5DD40491564EE196854ABB5F6A4E4E6FC46A6C5E62E29935E2C53B6294F",
+        "4.29.4": "314E7C1BD8E5BC86B6D15AD450866A2E7828CD4E51BB267670CB4642431FAC2D",
+    }
+    assert context_sha256 == context_hashes.get(
+        astrbot.__version__,
+        "B3B4FF6CC027743ECD6D2D739E785898CEDFC02344C2ADB9F81C63B4D66235AF",
     )
     metadata = (PLUGIN_PARENT / "translate_tts" / "metadata.yaml").read_text(
         encoding="utf-8"
@@ -268,6 +348,9 @@ async def main() -> None:
                 scenarios += 1
 
         assert getter_calls
+        if astrbot.__version__ == "4.29.4":
+            await probe_fenced_translation(stage, context, provider, adapter)
+            scenarios += 1
         print(
             f"AstrBot {astrbot.__version__} real stage/getter: PASS ({scenarios} scenarios; "
             f"stage SHA256 {stage_sha256}; context SHA256 {context_sha256})"

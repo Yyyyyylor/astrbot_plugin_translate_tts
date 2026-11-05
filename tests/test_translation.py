@@ -321,19 +321,23 @@ class TranslationTests(unittest.IsolatedAsyncioTestCase):
             await TranslationService(context).translate_for_tts("原文", make_scope())
 
     async def test_structured_translation_uses_one_call_and_validates_emotion(self):
-        context = FakeContext(
-            SimpleNamespace(
-                role="assistant",
-                completion_text='{"text":"やっと会えたね！","emotion":"happy"}',
+        payload = '{"text":"やっと会えたね！","emotion":"happy"}'
+        for completion in (
+            payload,
+            f"```json\n{payload}\n```",
+            f"```\r\n{payload}\r\n```",
+        ):
+            context = FakeContext(
+                SimpleNamespace(role="assistant", completion_text=completion)
             )
-        )
-        result = await TranslationService(context).translate_for_tts(
-            "终于见到你了！", make_scope(emotion_enabled=True)
-        )
-        self.assertEqual(result.text, "やっと会えたね！")
-        self.assertEqual(result.emotion, "happy")
-        self.assertTrue(result.success)
-        self.assertEqual(len(context.generate_calls), 1)
+            with self.subTest(completion=completion):
+                result = await TranslationService(context).translate_for_tts(
+                    "终于见到你了！", make_scope(emotion_enabled=True)
+                )
+                self.assertEqual(result.text, "やっと会えたね！")
+                self.assertEqual(result.emotion, "happy")
+                self.assertTrue(result.success)
+                self.assertEqual(len(context.generate_calls), 1)
 
     async def test_unknown_emotion_fails_closed_to_original(self):
         context = FakeContext(
@@ -351,14 +355,22 @@ class TranslationTests(unittest.IsolatedAsyncioTestCase):
         )
 
     async def test_bad_structured_output_never_reads_json_aloud(self):
-        context = FakeContext(
-            SimpleNamespace(role="assistant", completion_text="```json {} ```")
-        )
-        result = await TranslationService(context).translate_for_tts(
-            "原文", make_scope(emotion_enabled=True)
-        )
-        self.assertEqual(result.text, "原文")
-        self.assertFalse(result.success)
+        fenced = '```json\n{"text":"こんにちは","emotion":"neutral"}\n```'
+        for completion, emotion_enabled in (
+            ("```json\n{}\n```", True),
+            (f"Translation:\n{fenced}", True),
+            (f"{fenced}\n{fenced}", True),
+            (fenced, False),
+        ):
+            with self.subTest(completion=completion, emotion_enabled=emotion_enabled):
+                context = FakeContext(
+                    SimpleNamespace(role="assistant", completion_text=completion)
+                )
+                result = await TranslationService(context).translate_for_tts(
+                    "原文", make_scope(emotion_enabled=emotion_enabled)
+                )
+                self.assertEqual(result.text, "原文")
+                self.assertFalse(result.success)
 
     async def test_fish_s2_accepts_fine_grained_voice_direction(self):
         context = FakeContext(

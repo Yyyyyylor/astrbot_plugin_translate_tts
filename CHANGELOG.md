@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.5.1] - 2026-11-05
+
+### Fixed
+
+- Accept a single outer JSON code fence around an emotion-enabled translation. The enclosed object still has to pass the existing translation and emotion checks before TTS uses it.
+
+### Changed
+
+- Verify AstrBot 4.29.4 against the official tag and add it to the pinned-source probe. The supported range stays `>=4.27.5,<4.30`.
+- Update the bilingual installation links to v1.5.1.
+
 ## [1.5.0] - 2026-10-19
 
 ### Fixed

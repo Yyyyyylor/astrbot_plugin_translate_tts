@@ -10,7 +10,7 @@ Translate TTS 只改写“原有 AstrBot 链路已经决定送入 TTS”的文�
 
 | 组件 | 支持基线 | 当前证据 |
 | --- | --- | --- |
-| AstrBot | `>=4.27.5,<4.30`，核对 4.27.5、4.28.1、4.28.2、4.29.1 | 单元测试及固定源码集成探针；已用假翻译/TTS 服务离线执行 4.29.1 真实装饰阶段和 getter |
+| AstrBot | `>=4.27.5,<4.30`，核对 4.27.5、4.28.1、4.28.2、4.29.1、4.29.4 | 固定源码探针使用模拟 HTTP 和 TTS，离线执行 4.29.4 的装饰阶段、Context 和 OpenAI 兼容适配器 |
 | 平台 | `qq_official` | 本机配置快照中只有一个已启用的 `qq_official` 平台；尚未验证真实 QQ 送达和播放 |
 | 回答模式 | 非流式 | 已做单元测试；流式结果会主动透传 |
 | `astrbot_plugin_proactive_chat` | 仅 v1.2.5；参考 commit `d1203524f29be248a4975bac1f7586e9557434ee` | 本机磁盘源码全部匹配固定指纹；当前没有可核验的已加载运行实例 |
@@ -24,7 +24,7 @@ Private Companion 适配已包含在 v1.4.0 中。
 v1.4.1 新增 Proactive Chat v1.2.6 适配，同时保留 v1.2.5 支持。
 v1.4.2 支持 AstrBot 4.28.1/4.28.2，最低版本仍为 4.27.5；普通链路诊断会报告当前加载的 AstrBot 版本。
 
-v1.5.0 支持 AstrBot 4.29.1，保留 4.27.5 最低要求和已有主动消息适配。已核对官方精确标签源码，并在隔离环境离线验证现有 TTS 接口及旧 Plugin Pages bridge 的兼容性；尚未进行真实宿主与平台联调。
+v1.5.1 支持 AstrBot 4.29.4，保留 4.27.5 最低要求和已有主动消息适配。开启情感后，LLM 若用单个代码围栏包裹有效的翻译 JSON，插件现在能解析译文并交给 TTS。真实宿主与平台联调尚未进行。
 
 原始本机检查是 2026-09-06 的离线快照：未发现 AstrBot/Python/uvicorn 后端进程，Translate TTS 也尚未安装到实际插件目录。因此，它不能证明运行时包装已启用，更不能证明 QQ、模型或 TTS 的实际行为。
 
@@ -45,7 +45,7 @@ v1.5.0 支持 AstrBot 4.29.1，保留 4.27.5 最低要求和已有主动消息�
 
 ## 安装
 
-1. 从 [v1.5.0 Release](https://github.com/Yyyyyylor/astrbot_plugin_translate_tts/releases/tag/v1.5.0) 下载 `astrbot_plugin_translate_tts-1.5.0.zip`。
+1. 下载 [v1.5.1 安装 ZIP](https://github.com/Yyyyyylor/astrbot_plugin_translate_tts/releases/download/v1.5.1/astrbot_plugin_translate_tts-1.5.1.zip)。
 2. 在 AstrBot WebUI 的插件管理器中安装该 ZIP，或将 ZIP 根目录中的文件解压到 `AstrBot/data/plugins/astrbot_plugin_translate_tts`。
 3. 不要把本开发工作区中的 `data`、`temp`、缓存、数据库或配置产物复制到生产环境；文档和测试文件不是运行必需项。
 4. 启动 AstrBot，或在 **WebUI > 插件** 中重载。
