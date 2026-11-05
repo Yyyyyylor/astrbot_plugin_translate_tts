@@ -67,6 +67,8 @@ Preprocessing always keeps the untouched source for UI display and original-lang
 
 Cleanup is off by default and retains files for 30 days when enabled. Only real local audio paths returned through this plugin and recorded in its private manifest are eligible. URLs, directories, symlinks, unregistered files, paths outside AstrBot's temporary directory, and newly registered files are excluded. Cleanup unlinks individual files and never recursively empties a shared directory.
 
+To omit stage directions from the translation LLM, enable both **Enable text preprocessing** and **Ignore parenthesized text when translating** (`ignore_parenthesized_text`, off by default). The rule removes balanced ASCII and fullwidth parentheses and their contents from the translation input. For example, `（撩头发）谁要你关心了` is sent for translation as `谁要你关心了`; the chat still displays the full source.
+
 | Key | Default | Accepted values and effect |
 | --- | --- | --- |
 | `enabled` | `true` | Master switch; false makes all adapters pass through. |

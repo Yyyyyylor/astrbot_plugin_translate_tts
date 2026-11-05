@@ -79,6 +79,7 @@ class TranslationSettings:
     tts_file_retention_days: int = 30
     cleanup_check_period: str = "daily"
     preprocessing_enabled: bool = False
+    ignore_parenthesized_text: bool = False
     code_block_mode: str = "preserve"
     code_block_replacement: str = "code block omitted"
     markdown_decoration_mode: str = "preserve"
@@ -154,6 +155,9 @@ class TranslationSettings:
                 config.get("cleanup_check_period", "daily") or "daily"
             ).strip(),
             preprocessing_enabled=bool(config.get("preprocessing_enabled", False)),
+            ignore_parenthesized_text=bool(
+                config.get("ignore_parenthesized_text", False)
+            ),
             code_block_mode=str(
                 config.get("code_block_mode", "preserve") or "preserve"
             ).strip(),

@@ -91,6 +91,7 @@
     "tts_file_retention_days": {"type":"int","description":"TTS file retention days (1-365)","default":30,"slider":{"min":1,"max":365,"step":1}},
     "cleanup_check_period": {"type":"string","description":"Cleanup check period","default":"daily","options":["startup","12h","daily","weekly"]},
     "preprocessing_enabled": {"type":"bool","description":"Enable deterministic text preprocessing","default":false},
+    "ignore_parenthesized_text": {"type":"bool","description":"Ignore parenthesized text when translating","hint":"Requires text preprocessing. Removes balanced () and （） from translation input only; original display and fallback are unchanged.","default":false},
     "code_block_mode": {"type":"string","description":"Code block handling","default":"preserve","options":["preserve","skip","replace"]},
     "code_block_replacement": {"type":"string","description":"Code block replacement phrase","default":"code block omitted"},
     "markdown_decoration_mode": {"type":"string","description":"Markdown decoration handling","default":"preserve","options":["preserve","remove"]},

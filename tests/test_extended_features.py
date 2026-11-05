@@ -47,6 +47,7 @@ class ConfigAndPromptTests(unittest.IsolatedAsyncioTestCase):
         settings = TranslationSettings.from_mapping({})
         self.assertFalse(settings.custom_prompts_enabled)
         self.assertFalse(settings.preprocessing_enabled)
+        self.assertFalse(settings.ignore_parenthesized_text)
         self.assertFalse(settings.auto_cleanup_tts_files)
         self.assertEqual(settings.tts_file_retention_days, 30)
         self.assertEqual(settings.fish_model, "s2.1-pro-free")
@@ -143,6 +144,22 @@ class PreprocessingTests(unittest.TestCase):
         self.assertEqual(
             len(preprocess_text("abcdefgh", self.settings(max_preprocessed_chars=4))), 4
         )
+
+    def test_parentheses_require_both_switches_and_keep_unmatched_text(self):
+        text = "（动作(nested)）对话 [保留] （未闭合"
+        self.assertEqual(preprocess_text(text, self.settings()), text)
+        self.assertEqual(
+            preprocess_text(
+                text,
+                self.settings(
+                    preprocessing_enabled=False, ignore_parenthesized_text=True
+                ),
+            ),
+            text,
+        )
+        settings = self.settings(ignore_parenthesized_text=True)
+        self.assertEqual(preprocess_text(text, settings), "对话 [保留] （未闭合")
+        self.assertEqual(preprocess_text(text, settings, for_translation=False), text)
 
 
 class ContinuityTests(unittest.IsolatedAsyncioTestCase):
@@ -246,8 +263,8 @@ class FileCleanupTests(unittest.IsolatedAsyncioTestCase):
             self.assertIsNone(scheduler._task)
 
 
-class EmptyPreprocessProxyTests(unittest.IsolatedAsyncioTestCase):
-    async def test_empty_preprocess_never_calls_llm_or_tts(self):
+class PreprocessProxyTests(unittest.IsolatedAsyncioTestCase):
+    async def convert(self, text, completion="translated", **overrides):
         class Provider:
             def __init__(self):
                 self.calls = []
@@ -259,10 +276,10 @@ class EmptyPreprocessProxyTests(unittest.IsolatedAsyncioTestCase):
             def meta(self):
                 return SimpleNamespace(type="")
 
-        context = PromptContext()
+        context = PromptContext(completion)
         service = TranslationService(context)
         settings = TranslationSettings.from_mapping(
-            {"preprocessing_enabled": True, "quote_mode": "skip"}
+            {"preprocessing_enabled": True, **overrides}
         )
         current = scope(settings)
         current.owner = object()
@@ -271,12 +288,32 @@ class EmptyPreprocessProxyTests(unittest.IsolatedAsyncioTestCase):
         try:
             audio = await TranslatedTTSProviderProxy(
                 provider, current, service, lambda: True
-            ).get_audio("> only quote")
+            ).get_audio(text)
         finally:
             current_translation_scope.reset(token)
+        return audio, provider.calls, context.calls, current.conversions[0]
+
+    async def test_empty_preprocess_never_calls_llm_or_tts(self):
+        audio, tts, llm, _ = await self.convert("> only quote", quote_mode="skip")
         self.assertIsNone(audio)
-        self.assertEqual(provider.calls, [])
-        self.assertEqual(context.calls, [])
+        self.assertEqual(tts, [])
+        self.assertEqual(llm, [])
+
+    async def test_parentheses_are_omitted_from_llm_input_but_kept_in_source(self):
+        original = "（撩头发）谁要你关心了"
+        translated = "誰が心配してって言ったの？"
+        for completion, spoken in ((translated, translated), ("", original)):
+            with self.subTest(completion=completion):
+                audio, tts, llm, entry = await self.convert(
+                    original,
+                    completion=completion,
+                    ignore_parenthesized_text=True,
+                    emotion_enabled=False,
+                )
+                self.assertEqual(audio, "audio")
+                self.assertEqual([call["prompt"] for call in llm], ["谁要你关心了"])
+                self.assertEqual(tts, [spoken])
+                self.assertEqual(entry.source_text, original)
 
 
 if __name__ == "__main__":

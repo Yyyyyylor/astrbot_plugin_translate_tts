@@ -125,6 +125,10 @@
         "preprocessing_enabled": {
             "description": "\u542f\u7528\u6587\u672c\u9884\u5904\u7406"
         },
+        "ignore_parenthesized_text": {
+            "description": "翻译时忽略括号内容",
+            "hint": "需启用文本预处理。仅从翻译输入中移除成对的 () 和 （）及其内容，不影响原文显示或原文回退。"
+        },
         "code_block_mode": {
             "description": "\u4ee3\u7801\u5757\u5904\u7406",
             "labels": [

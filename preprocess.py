@@ -110,7 +110,24 @@ def _strip_markdown(text: str) -> str:
     return re.sub(r"(?m)^(\s{0,3})(?:#{1,6}\s+|[-+*]\s+)", r"\1", text)
 
 
-def preprocess_text(text: str, settings: TranslationSettings) -> str:
+def _strip_parenthesized_text(text: str) -> str:
+    closing = {"(": ")", "（": "）"}
+    stack: list[tuple[str, int]] = []
+    output: list[str] = []
+    for char in text:
+        if char in closing:
+            stack.append((closing[char], len(output)))
+        elif stack and char == stack[-1][0]:
+            _, start = stack.pop()
+            del output[start:]
+            continue
+        output.append(char)
+    return "".join(output)
+
+
+def preprocess_text(
+    text: str, settings: TranslationSettings, *, for_translation: bool = True
+) -> str:
     if not settings.preprocessing_enabled:
         return text
     value = _code_fences(
@@ -125,6 +142,8 @@ def preprocess_text(text: str, settings: TranslationSettings) -> str:
     value = _emoji(value, settings.emoji_mode)
     if settings.markdown_decoration_mode == "remove":
         value = _strip_markdown(value)
+    if for_translation and settings.ignore_parenthesized_text:
+        value = _strip_parenthesized_text(value)
     if settings.collapse_whitespace:
         value = " ".join(value.split())
     return value[: settings.max_preprocessed_chars].strip()

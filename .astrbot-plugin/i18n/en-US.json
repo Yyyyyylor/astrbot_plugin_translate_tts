@@ -125,6 +125,10 @@
         "preprocessing_enabled": {
             "description": "Enable text preprocessing"
         },
+        "ignore_parenthesized_text": {
+            "description": "Ignore parenthesized text when translating",
+            "hint": "Requires text preprocessing. Removes balanced () and （） from translation input only; original display and fallback are unchanged."
+        },
         "code_block_mode": {
             "description": "Code block handling",
             "labels": [

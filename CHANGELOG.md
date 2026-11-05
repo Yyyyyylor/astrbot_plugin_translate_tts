@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- Add an opt-in preprocessing rule to omit parenthesized text from translation input while preserving the visible source and original-language fallback.
+
 ### Fixed
 
 - Recover from malformed emotion JSON by requesting a plain translation once from the same model within the original deadline. If recovery also fails, synthesize the original text.

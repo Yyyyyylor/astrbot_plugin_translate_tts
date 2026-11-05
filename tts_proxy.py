@@ -127,7 +127,9 @@ class TranslatedTTSProviderProxy:
             )
             return audio
 
-        processed_text = preprocess_text(source_text, settings)
+        processed_text = preprocess_text(
+            source_text, settings, for_translation=not self._scope.skip_translation
+        )
         entry.preprocessed_text = processed_text
         if not processed_text:
             entry.diagnostic = "preprocessed_empty"
