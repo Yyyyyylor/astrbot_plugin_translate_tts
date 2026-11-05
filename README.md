@@ -32,7 +32,7 @@ The original local inspection is an offline snapshot from 2026-09-06. No AstrBot
 
 - If the upstream path does not call TTS, this plugin makes no translation call.
 - When TTS is called, the original text is kept once and the translation is synthesized by the original TTS provider.
-- With emotion enabled, translation and basic emotion classification share one strict JSON `llm_generate` request. It does not invoke tools or append anything to conversation history.
+- With emotion enabled, the plugin requests translation and emotion together. If the response contains malformed JSON or Markdown outside the accepted JSON fence, it makes one plain-text translation request to the same model within the original deadline. Neither request invokes tools or adds to conversation history.
 - Provider controls are request-local. Unsupported providers and models receive plain translated text without invented parameters.
 - Translation failure, timeout, invalid output, or a length violation falls back to synthesizing the complete original text.
 - If translated-text synthesis fails or returns no audio, the original text is attempted once. Cancellation propagates without fallback.

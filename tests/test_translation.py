@@ -354,6 +354,51 @@ class TranslationTests(unittest.IsolatedAsyncioTestCase):
             ("你好", "neutral", False),
         )
 
+    async def test_invalid_fish_json_retries_plain_translation_with_same_provider(self):
+        context = FakeContext()
+        responses = iter((' {"text":', "こんにちは"))
+
+        async def respond():
+            return SimpleNamespace(role="assistant", completion_text=next(responses))
+
+        context.generate_hook = respond
+        diagnostics = DiagnosticRecorder(NullLogger())
+        service = TranslationService(context, diagnostics=diagnostics)
+        scope = make_scope(emotion_enabled=True)
+        scope.selected_provider_type = "fishaudio_tts_api"
+        scope.selected_fish_model = "s2.1-pro-free"
+
+        result = await service.translate_for_tts("你好", scope)
+
+        self.assertEqual(
+            (result.text, result.emotion, result.success),
+            ("こんにちは", "neutral", True),
+        )
+        self.assertEqual((result.fish_cues, result.fish_segments), ((), ()))
+        self.assertEqual(len(context.resolve_calls), 1)
+        structured, plain = context.generate_calls
+        self.assertIn("fish_segments", structured["system_prompt"])
+        self.assertIn("only one non-empty", plain["system_prompt"])
+        self.assertNotIn("fish_segments", plain["system_prompt"])
+        self.assertEqual({**structured, "system_prompt": plain["system_prompt"]}, plain)
+        self.assertTrue(
+            any(
+                event["event"] == "translation_plain_retry"
+                and event["reason"] == "invalid_json"
+                for event in diagnostics.snapshot()["recent_events"]
+            )
+        )
+
+    async def test_plain_retry_rejects_malformed_json_and_stops(self):
+        context = FakeContext(
+            SimpleNamespace(role="assistant", completion_text='{"text":')
+        )
+        result = await TranslationService(context).translate_for_tts(
+            "原文", make_scope(emotion_enabled=True)
+        )
+        self.assertEqual((result.text, result.success), ("原文", False))
+        self.assertEqual(len(context.generate_calls), 2)
+
     async def test_bad_structured_output_never_reads_json_aloud(self):
         fenced = '```json\n{"text":"こんにちは","emotion":"neutral"}\n```'
         for completion, emotion_enabled in (

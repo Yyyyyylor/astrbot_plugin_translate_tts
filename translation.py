@@ -415,9 +415,10 @@ class TranslationService:
         custom_prompt = (
             settings.translation_prompt_text if settings.custom_prompts_enabled else ""
         )
-        system_prompt = compose_prompt(
+        translation_prompt = compose_prompt(
             TRANSLATION_PROMPT_TEMPLATE, custom_prompt, prompt_mode, values
         )
+        system_prompt = translation_prompt
         if emotion_enabled:
             emotion_builtin = (
                 FISH_S1_EMOTION_PROMPT_TEMPLATE
@@ -439,6 +440,46 @@ class TranslationService:
                     f"{system_prompt}\n\nEmotion instruction:\n{emotion_section}"
                 )
         system_prompt = f"{system_prompt}\n\n{contract.format_map(values)}"
+        try:
+            return await self._request_translation(
+                source_text,
+                scope,
+                provider_id,
+                system_prompt,
+                emotion_enabled=emotion_enabled,
+                fish_mode=fish_mode,
+            )
+        except TranslationRejected as exc:
+            if not emotion_enabled or exc.reason not in {
+                "invalid_json",
+                "prompt_or_markdown",
+            }:
+                raise
+            self._emit("translation_plain_retry", scope, reason=exc.reason)
+
+        # A format failure should not cost the translation itself. Reuse the
+        # provider and the outer deadline, with no emotion instructions.
+        return await self._request_translation(
+            source_text,
+            scope,
+            provider_id,
+            f"{translation_prompt}\n\n{_PLAIN_CONTRACT}",
+            emotion_enabled=False,
+            fish_mode=False,
+            plain_retry=True,
+        )
+
+    async def _request_translation(
+        self,
+        source_text: str,
+        scope: TranslationScope,
+        provider_id: str,
+        system_prompt: str,
+        *,
+        emotion_enabled: bool,
+        fish_mode: bool,
+        plain_retry: bool = False,
+    ) -> TranslationResult:
         scope.diagnostic_phase = "llm_request"
         llm_started = time.monotonic()
         response = await self._context.llm_generate(
@@ -474,12 +515,14 @@ class TranslationService:
             fenced = _STRUCTURED_OUTPUT_FENCE.fullmatch(completion)
             if fenced:
                 completion = fenced.group(1).strip()
-        if (
-            "```" in completion
-            or "Protected output contract:" in completion
-            or completion == system_prompt
-        ):
+        if "Protected output contract:" in completion or completion == system_prompt:
+            raise TranslationRejected("prompt_echo")
+        if "```" in completion:
             raise TranslationRejected("prompt_or_markdown")
+        if emotion_enabled and _looks_like_plain_text_refusal(completion):
+            raise TranslationRejected("refusal_text")
+        if plain_retry and completion.startswith(("{", "[")):
+            raise TranslationRejected("unexpected_structured_output")
         emotion = "neutral"
         fish_cues: tuple[str, ...] = ()
         fish_segments = ()
@@ -521,7 +564,7 @@ class TranslationService:
             translated = completion
         if _looks_like_plain_text_refusal(translated):
             raise TranslationRejected("refusal_text")
-        if len(translated) > settings.max_output_chars:
+        if len(translated) > scope.settings.max_output_chars:
             raise TranslationRejected("output_too_long")
         scope.diagnostic_phase = "translation_complete"
         return TranslationResult(

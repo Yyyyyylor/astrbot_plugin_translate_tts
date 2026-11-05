@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Fixed
+
+- Recover from malformed emotion JSON by requesting a plain translation once from the same model within the original deadline. If recovery also fails, synthesize the original text.
+
 ## [1.5.1] - 2026-11-05
 
 ### Fixed
